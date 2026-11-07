@@ -10,7 +10,7 @@ After scaffolding, run `mvn verify` at the root for Java tests; Testcontainers r
 
 ## Coding Style & Naming Conventions
 
-Use Java 21 and four-space indentation for Java; use two spaces for TypeScript, JSON, and YAML. Catalog, Order, and Notification use hexagonal architecture plus pragmatic DDD: each service owns a bounded context with top-level `domain/`, `application/ports/{in,out}/`, `application/service/`, and `infrastructure/adapters/{in,out}/`. Put invariants in aggregate roots and value objects; domain has no Spring/JPA imports and application never imports infrastructure. Keep support services simple. Name use cases `CheckoutOrderUseCase`, adapters `MercadoPagoAdapter`, and migrations `V1__create_orders.sql`. No formatter or linter is configured yet.
+Use Java 21 and four-space indentation for Java; use two spaces for TypeScript, JSON, and YAML. Catalog, Order, and Notification use hexagonal architecture plus pragmatic DDD: each service owns a bounded context with top-level `domain/`, `application/ports/{in,out}/`, `application/service/`, and `infrastructure/adapters/{in,out}/`. Put invariants in aggregate roots and value objects; domain has no Spring/JPA imports and application never imports infrastructure. Keep support services simple. Name use cases `CheckoutOrderUseCase`, adapters `MercadoPagoAdapter`, and migrations `V1__create_catalog.sql`. No formatter or linter is configured yet.
 
 ## Testing Guidelines
 
