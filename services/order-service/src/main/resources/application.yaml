@@ -1,3 +1,18 @@
 spring:
   application:
     name: order-service
+  datasource:
+    url: ${DB_URL_POSTGRES:jdbc:postgresql://localhost:5432/orders_db}
+    username: ${DB_USERNAME_POSTGRES}
+    password: ${DB_PASSWORD_POSTGRES}
+  flyway:
+    locations:
+      - classpath:db/migration
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.PostgreSQLDialect
+        show_sql: true
+        format_sql: true

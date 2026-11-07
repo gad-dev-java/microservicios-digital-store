@@ -81,7 +81,7 @@ order-service/
 │       └── config/                  # Seguridad, clientes HTTP (timeouts) y beans
 ├── src/main/resources/
 │   ├── application.yml               # Solo bootstrap y valores locales mínimos
-│   └── db/migration/V1__create_orders.sql
+│   └── db/migration/V1__create_catalog.sql
 └── src/test/java/com/tuportafolio/orders/
     ├── architecture/                  # ArchUnit: reglas de dependencia
     ├── domain/                        # Reglas y transiciones de estado (*Test)
