@@ -1,0 +1,35 @@
+name: Deploy local
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  deploy:
+    if: github.ref == 'refs/heads/master'
+    runs-on: [self-hosted, Windows, X64, portafolio-local]
+
+    defaults:
+      run:
+        shell: pwsh
+
+    env:
+      COMPOSE_PROJECT_NAME: portafolio
+      POSTGRES_USER: ${{ secrets.POSTGRES_USER }}
+      POSTGRES_PASSWORD: ${{ secrets.POSTGRES_PASSWORD }}
+      KEYCLOAK_ADMIN: ${{ secrets.KEYCLOAK_ADMIN }}
+      KEYCLOAK_ADMIN_PASSWORD: ${{ secrets.KEYCLOAK_ADMIN_PASSWORD }}
+
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Validar Compose
+        run: docker compose config --quiet
+
+      - name: Desplegar
+        run: docker compose up --build -d
+
+      - name: Revisar contenedores
+        run: docker compose ps
