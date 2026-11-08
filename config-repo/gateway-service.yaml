@@ -1,0 +1,21 @@
+server:
+  port: 8080
+
+spring:
+  cloud:
+    gateway:
+      server:
+        webflux:
+          routes:
+            - id: catalog-public
+              uri: lb://catalog-service
+              predicates:
+                - Path=/api/products/**
+            - id: catalog-admin
+              uri: lb://catalog-service
+              predicates:
+                - Path=/api/admin/products/**
+            - id: orders
+              uri: lb://order-service
+              predicates:
+                - Path=/api/orders/**,/api/admin/orders/**

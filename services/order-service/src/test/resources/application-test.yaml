@@ -7,3 +7,11 @@ spring:
   jpa:
     hibernate:
       ddl-auto: create-drop
+  flyway:
+    enabled: false
+  cloud:
+    config:
+      enabled: false
+eureka:
+  client:
+    enabled: false
