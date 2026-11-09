@@ -9,11 +9,11 @@ permissions:
 jobs:
   deploy:
     if: github.ref == 'refs/heads/master'
-    runs-on: [self-hosted, Windows, X64, portafolio-local]
+    runs-on: [self-hosted, Linux, X64, portafolio-local]
 
     defaults:
       run:
-        shell: pwsh
+        shell: bash
 
     env:
       COMPOSE_PROJECT_NAME: portafolio

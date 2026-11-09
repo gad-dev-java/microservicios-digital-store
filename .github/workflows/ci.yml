@@ -14,11 +14,11 @@ permissions:
 
 jobs:
   verify:
-    runs-on: [self-hosted, Windows, X64, portafolio-local]
+    runs-on: [self-hosted, Linux, X64, portafolio-local]
 
     defaults:
       run:
-        shell: pwsh
+        shell: bash
 
     steps:
       - uses: actions/checkout@v7
@@ -30,7 +30,7 @@ jobs:
           cache: maven
 
       - name: Verificar Java
-        run: .\mvnw.cmd verify
+        run: bash ./mvnw verify
 
       - uses: actions/setup-node@v7
         with:
