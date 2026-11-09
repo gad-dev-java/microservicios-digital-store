@@ -52,4 +52,5 @@ jobs:
           POSTGRES_PASSWORD: ci-placeholder
           KEYCLOAK_ADMIN: ci
           KEYCLOAK_ADMIN_PASSWORD: ci-placeholder
+          ORDER_SERVICE_CLIENT_SECRET: ci-placeholder
         run: docker compose build

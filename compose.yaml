@@ -85,6 +85,7 @@ services:
       KC_DB_PASSWORD: ${POSTGRES_PASSWORD:?Define POSTGRES_PASSWORD en .env}
       KC_BOOTSTRAP_ADMIN_USERNAME: ${KEYCLOAK_ADMIN:?Define KEYCLOAK_ADMIN en .env}
       KC_BOOTSTRAP_ADMIN_PASSWORD: ${KEYCLOAK_ADMIN_PASSWORD:?Define KEYCLOAK_ADMIN_PASSWORD en .env}
+      ORDER_SERVICE_CLIENT_SECRET: ${ORDER_SERVICE_CLIENT_SECRET:?Define ORDER_SERVICE_CLIENT_SECRET en .env}
     ports:
       - "127.0.0.1:8081:8080"
     volumes:
@@ -141,6 +142,7 @@ services:
       DB_URL_POSTGRES: jdbc:postgresql://postgres:5432/catalog_db
       DB_USERNAME_POSTGRES: ${POSTGRES_USER:?Define POSTGRES_USER en .env}
       DB_PASSWORD_POSTGRES: ${POSTGRES_PASSWORD:?Define POSTGRES_PASSWORD en .env}
+      KEYCLOAK_JWKS_URI: http://keycloak:8080/realms/digital-store/protocol/openid-connect/certs
     volumes:
       - product-files:/app/files
     depends_on:
@@ -171,6 +173,8 @@ services:
       DB_URL_POSTGRES: jdbc:postgresql://postgres:5432/orders_db
       DB_USERNAME_POSTGRES: ${POSTGRES_USER:?Define POSTGRES_USER en .env}
       DB_PASSWORD_POSTGRES: ${POSTGRES_PASSWORD:?Define POSTGRES_PASSWORD en .env}
+      KEYCLOAK_JWKS_URI: http://keycloak:8080/realms/digital-store/protocol/openid-connect/certs
+      ORDER_SERVICE_CLIENT_SECRET: ${ORDER_SERVICE_CLIENT_SECRET:?Define ORDER_SERVICE_CLIENT_SECRET en .env}
     depends_on:
       postgres:
         condition: service_healthy
@@ -226,6 +230,7 @@ services:
         SERVICE_NAME: gateway-service
     environment:
       SPRING_CONFIG_IMPORT: configserver:http://config-server:8888
+      KEYCLOAK_JWKS_URI: http://keycloak:8080/realms/digital-store/protocol/openid-connect/certs
     ports:
       - "127.0.0.1:8080:8080"
     depends_on:

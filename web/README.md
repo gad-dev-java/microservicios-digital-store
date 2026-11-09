@@ -1,32 +1,23 @@
-# React + TypeScript + Vite
+# Digital Store Web
 
-This template provides a minimal setup to get React working in Vite with HMR and some Oxlint rules.
+Cliente React, Vite y TypeScript. La sesión utiliza el cliente público `digital-store-web` del realm `digital-store` en Keycloak.
 
-Currently, two official plugins are available:
+## Ejecutar en local
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+1. Levanta Keycloak en `http://localhost:8081` y comprueba que el cliente permita `http://localhost:5173/*` como URI de redirección y `http://localhost:5173` como origen web.
+2. Ejecuta `npm ci` y `npm run dev` dentro de `web/`.
+3. Abre `http://localhost:5173/` y prueba **Iniciar sesión**, **Mi cuenta** y **Cerrar sesión**.
 
-## React Compiler
+Los valores locales están en `src/app/keycloak.ts`. Para usar otro servidor, copia `.env.example` a `.env.local` y cambia las variables `VITE_KEYCLOAK_*`. Estas variables son públicas; nunca coloques secretos de cliente en archivos de Vite.
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+## Peticiones privadas
 
-## Expanding the Oxlint configuration
+Usa `authenticatedFetch` de `src/app/authenticatedFetch.ts` para las futuras llamadas privadas:
 
-If you are developing a production application, we recommend enabling type-aware lint rules by installing `oxlint-tsgolint` and editing `.oxlintrc.json`:
+```ts
+import { authenticatedFetch } from './app/authenticatedFetch'
 
-```json
-{
-  "$schema": "./node_modules/oxlint/configuration_schema.json",
-  "plugins": ["react", "typescript", "oxc"],
-  "options": {
-    "typeAware": true
-  },
-  "rules": {
-    "react/rules-of-hooks": "error",
-    "react/only-export-components": ["warn", { "allowConstantExport": true }]
-  }
-}
+const response = await authenticatedFetch('http://localhost:8080/api/orders')
 ```
 
-See the [Oxlint rules documentation](https://oxc.rs/docs/guide/usage/linter/rules) for the full list of rules and categories.
+La función renueva el token con `updateToken(30)` y agrega el encabezado `Authorization`. Los tokens se conservan solo en la instancia de `keycloak-js` en memoria.

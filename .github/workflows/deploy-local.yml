@@ -21,6 +21,7 @@ jobs:
       POSTGRES_PASSWORD: ${{ secrets.POSTGRES_PASSWORD }}
       KEYCLOAK_ADMIN: ${{ secrets.KEYCLOAK_ADMIN }}
       KEYCLOAK_ADMIN_PASSWORD: ${{ secrets.KEYCLOAK_ADMIN_PASSWORD }}
+      ORDER_SERVICE_CLIENT_SECRET: ${{ secrets.ORDER_SERVICE_CLIENT_SECRET }}
 
     steps:
       - uses: actions/checkout@v7
