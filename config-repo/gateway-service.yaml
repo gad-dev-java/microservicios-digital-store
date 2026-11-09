@@ -19,3 +19,9 @@ spring:
               uri: lb://order-service
               predicates:
                 - Path=/api/orders/**,/api/admin/orders/**
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          issuer-uri: http://localhost:8081/realms/digital-store
+          jwk-set-uri: ${KEYCLOAK_JWKS_URI:http://localhost:8081/realms/digital-store/protocol/openid-connect/certs}

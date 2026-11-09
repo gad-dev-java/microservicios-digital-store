@@ -17,3 +17,9 @@ spring:
         format_sql: true
   config:
     import: ${SPRING_CONFIG_IMPORT:optional:configserver:http://localhost:8888}
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          issuer-uri: http://localhost:8081/realms/digital-store
+          jwk-set-uri: ${KEYCLOAK_JWKS_URI:http://localhost:8081/realms/digital-store/protocol/openid-connect/certs}
