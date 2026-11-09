@@ -76,8 +76,9 @@ services:
 
   keycloak:
     image: quay.io/keycloak/keycloak:26.8.2
-    command: ["start-dev"]
+    command: ["start-dev", "--import-realm"]
     environment:
+      KC_HOSTNAME: "http://localhost:8081"
       KC_DB: postgres
       KC_DB_URL: jdbc:postgresql://postgres:5432/keycloak_db
       KC_DB_USERNAME: ${POSTGRES_USER:?Define POSTGRES_USER en .env}
@@ -86,6 +87,8 @@ services:
       KC_BOOTSTRAP_ADMIN_PASSWORD: ${KEYCLOAK_ADMIN_PASSWORD:?Define KEYCLOAK_ADMIN_PASSWORD en .env}
     ports:
       - "127.0.0.1:8081:8080"
+    volumes:
+      - ./infra/keycloak:/opt/keycloak/data/import:ro
     depends_on:
       postgres:
         condition: service_healthy
