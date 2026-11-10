@@ -15,19 +15,20 @@ public class SecurityConfig {
         JwtAuthenticationConverter jwtConverter = new JwtAuthenticationConverter();
         jwtConverter.setJwtGrantedAuthoritiesConverter(new RealmRoleConverter());
 
-        return http
-                .csrf(AbstractHttpConfigurer::disable)
-                .authorizeHttpRequests(requests -> requests
-                        .dispatcherTypeMatchers(DispatcherType.ERROR).permitAll()
-                        .requestMatchers("/actuator/health", "/actuator/info").permitAll()
-                        .requestMatchers("/api/admin/**").hasRole("ADMIN")
-                        .requestMatchers("/api/orders", "/api/orders/**").hasRole("CUSTOMER")
-                        .requestMatchers("/api/library", "/api/library/**").hasRole("CUSTOMER")
-                        .anyRequest().denyAll()
-                )
-                .oauth2ResourceServer(oauth2 -> oauth2.jwt(jwt ->
-                        jwt.jwtAuthenticationConverter(jwtConverter)
-                ))
+        return http.csrf(AbstractHttpConfigurer::disable)
+                .authorizeHttpRequests(requests -> requests.dispatcherTypeMatchers(DispatcherType.ERROR)
+                        .permitAll()
+                        .requestMatchers("/actuator/health", "/actuator/info")
+                        .permitAll()
+                        .requestMatchers("/api/admin/**")
+                        .hasRole("ADMIN")
+                        .requestMatchers("/api/orders", "/api/orders/**")
+                        .hasRole("CUSTOMER")
+                        .requestMatchers("/api/library", "/api/library/**")
+                        .hasRole("CUSTOMER")
+                        .anyRequest()
+                        .denyAll())
+                .oauth2ResourceServer(oauth2 -> oauth2.jwt(jwt -> jwt.jwtAuthenticationConverter(jwtConverter)))
                 .build();
     }
 }

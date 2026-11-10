@@ -1,6 +1,6 @@
 # Arquitectura de alto nivel
 
-El proyecto previsto es una tienda local de productos digitales de demostración. Los pagos usan **Checkout Pro con Orders API** y las credenciales de prueba de una aplicación de Mercado Pago Perú: no se procesará dinero real. Los servicios todavía no están implementados. La estructura prevista del monorepositorio está en [repository-structure.md](repository-structure.md), el trabajo concreto en [user-stories.md](user-stories.md) y las decisiones puntuales en `docs/adr/`.
+El proyecto previsto es una tienda local de productos digitales de demostración. Los pagos usan **Checkout Pro con Orders API** y las credenciales de prueba de una aplicación de Mercado Pago Perú: no se procesará dinero real. Ya existen el scaffolding de los servicios, las migraciones y la seguridad; las funciones de catálogo, compra y correo siguen planificadas. La estructura está en [repository-structure.md](repository-structure.md), el trabajo concreto en [user-stories.md](user-stories.md), el contrato HTTP inicial en [api-conventions.md](api-conventions.md), la trazabilidad prevista en [observability.md](observability.md) y las decisiones puntuales en `docs/adr/`.
 
 ```mermaid
 flowchart LR
@@ -208,7 +208,7 @@ Invariante: la deduplicación (60 días) dura más que el período de republicac
 - La URL pública de Keycloak debe ser accesible desde el navegador local para que los enlaces de verificación y recuperación recibidos en Mailpit funcionen. Las rutas de pedidos y descargas comprueban que `buyer_sub` del JWT sea el propietario; las rutas administrativas exigen `ADMIN`.
 - El webhook usa una ruta pública sin JWT en Gateway, pero Order Service exige firma válida y consulta el estado real al proveedor. El Access Token de prueba de la aplicación y el secreto del webhook nunca se guardan en Config Server ni Git: llegan por variables de entorno.
 - Un webhook repetido con `provider_notification_id` ya registrado solo se omite si su recepción está `PROCESSED`; si está `RECEIVED` o `FAILED`, se reintenta consultar el estado del proveedor. La concesión de derechos sigue siendo idempotente.
-- Los logs incluyen `traceId`; Micrometer Tracing propaga W3C Trace Context por HTTP y Kafka y el `traceparent` se conserva en outbox y entregas para seguir el flujo asincrónico.
+- HT-08 añadirá `traceId` a los logs y propagará W3C Trace Context por HTTP y Kafka; el `traceparent` se conservará en outbox y entregas. El webhook de Mercado Pago iniciará una traza nueva y se correlacionará con el checkout mediante `orderId`/`paymentAttemptId`, como detalla [observability.md](observability.md).
 - Un runner local de GitHub Actions ejecutará `mvn verify`, `npm run build` y la construcción de imágenes; un flujo manual de despliegue ejecutará `docker compose up --build -d` en esa misma máquina. El túnel solo expone temporalmente el webhook y las URL de retorno durante la prueba manual.
 
 ## Supuestos por validar y limitaciones conocidas

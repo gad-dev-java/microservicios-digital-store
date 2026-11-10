@@ -8,7 +8,7 @@ Este backlog define el **MVP local** de la tienda de productos digitales. Seguir
 
 ### HT-01 — Crear el monorepositorio Java y web
 
-**Implementar:** `pom.xml` padre con Java 21 y los seis módulos indicados en la estructura; Maven Wrapper; proyecto React + Vite + TypeScript en `web/`; paquetes `domain`, `application` e `infrastructure` en los tres servicios de negocio. Configurar JUnit 5 y añadir ArchUnit como dependencia de test en Catalog, Order y Notification.
+**Implementar:** `pom.xml` padre con Java 21 y los seis módulos indicados en la estructura; Maven Wrapper; proyecto React + Vite + TypeScript en `web/`; paquetes `domain`, `application` e `infrastructure` en los tres servicios de negocio. Configurar JUnit Jupiter 6 y añadir ArchUnit como dependencia de test en Catalog, Order y Notification.
 
 **Aceptación:** `mvn verify` y `npm run build` terminan correctamente con el scaffolding. Las pruebas de reglas ArchUnit se incorporan en HU-03, HU-05 y HU-13, cuando cada servicio ya tenga clases que verificar.
 
@@ -64,9 +64,9 @@ Este backlog define el **MVP local** de la tienda de productos digitales. Seguir
 
 **Depende de:** HT-02 y HU-02.
 
-**Implementar:** `GET /api/products` y `GET /api/products/{id}` en Catalog; páginas React de listado, búsqueda, detalle y carrito temporal en memoria del navegador. Mostrar precio y moneda PEN. Al crear `Product`, añadir un test ArchUnit que impida dependencias de `domain` hacia Spring/JPA y de `application` hacia `infrastructure`.
+**Implementar:** `GET /api/products` y `GET /api/products/{id}` en Catalog conforme a [api-conventions.md](api-conventions.md); usar controllers delgados, inyección por constructor, DTOs y mappers manuales en adaptadores. Crear páginas React de listado, búsqueda, detalle y carrito temporal en memoria del navegador. Mostrar precio y moneda PEN. Al crear `Product`, añadir un test ArchUnit que impida dependencias de `domain` hacia Spring/JPA y de `application` hacia `infrastructure`.
 
-**Aceptación:** solo aparecen productos `PUBLISHED`; un ID inexistente devuelve 404; el carrito no crea registros en la base y se puede usar antes de iniciar sesión. El test ArchUnit de Catalog pasa con `mvn verify` y falla ante una dependencia prohibida.
+**Aceptación:** solo aparecen productos `PUBLISHED`; la búsqueda por título y la paginación siguen el contrato; un ID inexistente o no publicado devuelve 404; el carrito no crea registros en la base y se puede usar antes de iniciar sesión. El test ArchUnit de Catalog pasa con `mvn verify` y falla ante una dependencia prohibida.
 
 ### HU-04 — Administrar productos digitales
 
@@ -74,7 +74,7 @@ Este backlog define el **MVP local** de la tienda de productos digitales. Seguir
 
 **Depende de:** HU-02 y HT-02.
 
-**Implementar:** API bajo `/api/admin/products` y pantallas de administración; validar SKU, título, precio positivo y archivo completo antes de publicar. Guardar el archivo en volumen local con clave UUID, tamaño, tipo y SHA-256; comprobar que la ruta queda dentro del directorio permitido.
+**Implementar:** API bajo `/api/admin/products` y pantallas de administración; usar DTOs de entrada con `@Valid` y errores `ProblemDetail` según [api-conventions.md](api-conventions.md). Validar SKU, título, precio positivo y archivo completo antes de publicar. Guardar el archivo en volumen local con clave UUID, tamaño, tipo y SHA-256; comprobar que la ruta queda dentro del directorio permitido.
 
 **Aceptación:** un borrador sin archivo se guarda, pero no se publica; SKU repetido y precio inválido se rechazan; el nombre enviado por el administrador no determina la ruta de almacenamiento; archivar retira el producto del catálogo público.
 
@@ -212,9 +212,9 @@ Este backlog define el **MVP local** de la tienda de productos digitales. Seguir
 
 **Depende de:** HT-03 y HT-06.
 
-**Implementar:** Micrometer Tracing con W3C Trace Context en HTTP y Kafka; conservar `traceparent` en outbox y correo; logs con `traceId`; endpoints Actuator de salud accesibles solo internamente. Configurar timeouts de `RestClient` y umbral de llamadas lentas del Circuit Breaker.
+**Implementar:** seguir [observability.md](observability.md): Micrometer Tracing con W3C Trace Context en HTTP y Kafka; conservar `traceparent` en outbox y correo; logs con `traceId`; endpoints Actuator de salud accesibles solo internamente. Configurar timeouts de `RestClient` y umbral de llamadas lentas del Circuit Breaker.
 
-**Aceptación:** una compra puede seguirse por el mismo trace desde Gateway hasta Notification Service; Catalog lento devuelve 503 sin bloquear indefinidamente Order Service; Actuator no queda publicado por Gateway.
+**Aceptación:** la llamada HTTP conserva `traceId` entre Gateway y los servicios; el webhook inicia otra traza y la conserva por outbox, Kafka y Notification Service, correlacionada con el pedido mediante `orderId`; Catalog lento devuelve 503 sin bloquear indefinidamente Order Service; Gateway no enruta el Actuator de otros servicios.
 
 ### HT-09 — Documentar y ejecutar la demo completa
 
