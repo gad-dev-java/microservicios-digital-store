@@ -1,6 +1,13 @@
 package com.portafolio.catalog_service;
 
+import static org.mockito.Mockito.when;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+
 import com.portafolio.catalog_service.infrastructure.config.SecurityConfig;
+import java.time.Instant;
+import java.util.List;
+import java.util.Map;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -14,14 +21,6 @@ import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RestController;
-
-import java.time.Instant;
-import java.util.List;
-import java.util.Map;
-
-import static org.mockito.Mockito.when;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 @WebMvcTest(controllers = CatalogSecurityTest.ProbeController.class)
 @Import({SecurityConfig.class, CatalogSecurityTest.ProbeController.class})
@@ -42,25 +41,21 @@ class CatalogSecurityTest {
 
     @Test
     void internalRouteWithoutTokenReturns401() throws Exception {
-        mvc.perform(get("/api/internal/test"))
-                .andExpect(status().isUnauthorized());
+        mvc.perform(get("/api/internal/test")).andExpect(status().isUnauthorized());
     }
 
     @Test
     void customerCannotAccessAdminOrInternalRoute() throws Exception {
-        mvc.perform(get("/api/admin/test")
-                        .header(HttpHeaders.AUTHORIZATION, "Bearer customer"))
+        mvc.perform(get("/api/admin/test").header(HttpHeaders.AUTHORIZATION, "Bearer customer"))
                 .andExpect(status().isForbidden());
 
-        mvc.perform(get("/api/internal/test")
-                        .header(HttpHeaders.AUTHORIZATION, "Bearer customer"))
+        mvc.perform(get("/api/internal/test").header(HttpHeaders.AUTHORIZATION, "Bearer customer"))
                 .andExpect(status().isForbidden());
     }
 
     @Test
     void serviceRoleCanAccessInternalRoute() throws Exception {
-        mvc.perform(get("/api/internal/test")
-                        .header(HttpHeaders.AUTHORIZATION, "Bearer service"))
+        mvc.perform(get("/api/internal/test").header(HttpHeaders.AUTHORIZATION, "Bearer service"))
                 .andExpect(status().isOk());
     }
 

@@ -2,20 +2,20 @@
 
 ## Project Structure & Module Organization
 
-This repository currently contains design documents and `script.sql`; application code is not scaffolded yet. Follow `docs/repository-structure.md` for the six planned Maven modules, the independent React/Vite `web/`, local `compose.yaml`, `config-repo/`, `infra/`, and CI workflows; implement the acceptance criteria in `docs/user-stories.md`. In each Java module, put code in `src/main/java`, Flyway migrations in `src/main/resources/db/migration`, and tests in `src/test/java`. Keep service databases and models separate.
+The root `pom.xml` builds six Spring Boot modules under `services/`: Catalog, Order, Notification, Gateway, Config Server, and Discovery Server. `web/` holds React/Vite/TypeScript. Local infrastructure lives in `compose.yaml`, `config-repo/`, and `infra/`. Follow `docs/architecture.md`, `docs/user-stories.md`, `docs/api-conventions.md` for HTTP work, and `docs/observability.md` for tracing. Put Java code in `src/main/java`, tests in `src/test/java`, and service-owned Flyway migrations in `src/main/resources/db/migration`. `script.sql` is a reference; never apply it over Flyway-managed tables.
 
-## Build, Test, and Development Commands
+## Build, Test & Local Development
 
-After scaffolding, run `mvn verify` at the root for Java tests; Testcontainers requires Docker. Use `docker compose up --build -d` for the local stack and `docker compose down` to stop it without deleting volumes. In `web/`, run `npm ci`, `npm run dev`, and `npm run build`. The planned GitHub Actions runner runs locally and deploys with Compose on manual trigger. `script.sql` is a SQL reference, not a Flyway migration: split its per-database DDL into module migrations, then remove it. Never run both against the same tables.
+Run `mvn verify` at the root for all Java modules (`./mvnw verify` in Bash/WSL); it checks Java format and tests. Run `mvn spotless:apply` to format Java. In `web/`, use `npm ci`, `npm run dev`, `npm run lint`, and `npm run build`. Use `docker compose up --build -d` to start locally and `docker compose down` to stop without deleting volumes. CI uses a trusted Linux/WSL runner; `deploy-local.yml` runs manually from `master`.
 
-## Coding Style & Naming Conventions
+## Architecture & Coding Style
 
-Use Java 21 and four-space indentation for Java; use two spaces for TypeScript, JSON, and YAML. Catalog, Order, and Notification use hexagonal architecture plus pragmatic DDD: each service owns a bounded context with top-level `domain/`, `application/ports/{in,out}/`, `application/service/`, and `infrastructure/adapters/{in,out}/`. Put invariants in aggregate roots and value objects; domain has no Spring/JPA imports and application never imports infrastructure. Keep support services simple. Name use cases `CheckoutOrderUseCase`, adapters `MercadoPagoAdapter`, and migrations `V1__create_catalog.sql`. No formatter or linter is configured yet.
+Use Java 21 and Spotless for four-space Java formatting; use two spaces for TypeScript, JSON, and YAML. Catalog, Order, and Notification follow hexagonal architecture with pragmatic DDD: add `domain/`, `application/ports/{in,out}/`, `application/service/`, and `infrastructure/adapters/{in,out}/` as features grow. Domain must not import Spring/JPA; application must not import infrastructure. Use constructor injection, HTTP DTOs, thin controllers, and manual mappers in adapters. Keep support services simpler. Name classes `CheckoutOrderUseCase` or `MercadoPagoAdapter` and migrations `V2__add_catalog_indexes.sql`. Run Oxlint with `npm run lint`.
 
 ## Testing Guidelines
 
-Use JUnit 5 and Testcontainers for PostgreSQL, Kafka, Redis, and Mailpit integration paths. Name unit tests `*Test` and container-backed tests `*IT`. Unit-test product publishing, order totals and status transitions; integrate idempotency cleanup, internal-route denial, Kafka duplicates and DLT, Catalog timeout (`503`), Redis fallback, streaming, concurrent webhooks, entitlements, outbox retry, and email failures. Stub Mercado Pago HTTP in CI; test manually with the application's test credentials.
+Use JUnit Jupiter 6; name unit/security tests `*Test` and container-backed integration tests `*IT`. Existing security tests cover `401`, `403`, role conversion, and internal routes with mocked JWT decoders. Add Testcontainers for database, Kafka, Redis, and SMTP paths as features arrive. Stub Mercado Pago in CI; use test credentials manually. Before a pull request, run `mvn verify`, `npm run lint`, and `npm run build`.
 
-## Commits, Pull Requests & Configuration
+## Commits, Pull Requests & Secrets
 
-There is no Git history yet, so no existing commit convention can be inferred. Use scoped subjects such as `feat(orders): confirm test payment`. Pull requests should describe behavior, verification commands, related issues, and UI screenshots when relevant. Never commit Mercado Pago tokens, webhook secrets, Google OAuth credentials, Keycloak passwords, or `.env`; provide placeholders in `.env.example`. Only test credentials are allowed in the local payment flow.
+Use scoped commits such as `feat(auth): complete HU-02 login and route security`. Keep each story on a branch; pull requests should list behavior, verification, related HU/HT, and UI screenshots when relevant. Never commit `.env`, credentials, JWTs, or client secrets. Use `.env.example` placeholders. Keep Keycloak's `order-service-client` secret in `infra/keycloak/digital-store-realm.json` as `${ORDER_SERVICE_CLIENT_SECRET}`; console exports mask it. Web tokens stay in memory; only the Order service account receives `CATALOG_INTERNAL_READ`.
