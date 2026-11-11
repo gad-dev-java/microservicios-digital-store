@@ -10,7 +10,7 @@ spring:
             - id: catalog-public
               uri: lb://catalog-service
               predicates:
-                - Path=/api/products/**
+                - Path=/api/products,/api/products/**
             - id: catalog-admin
               uri: lb://catalog-service
               predicates:
