@@ -9,4 +9,8 @@ public interface ProductRepositoryPort {
     ProductPage searchPublished(String title, int page, int size);
 
     Optional<Product> findById(UUID id);
+
+    ProductPage listAll(int page, int size);
+
+    Product save(Product product);
 }
