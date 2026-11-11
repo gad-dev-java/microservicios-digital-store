@@ -4,6 +4,7 @@ import com.portafolio.catalog_service.application.ports.out.AssetStorageExceptio
 import com.portafolio.catalog_service.domain.exceptions.InvalidProductException;
 import com.portafolio.catalog_service.domain.exceptions.InvalidProductStateException;
 import com.portafolio.catalog_service.domain.exceptions.ProductNotFoundException;
+import org.springframework.core.annotation.Order;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ProblemDetail;
@@ -13,6 +14,7 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 import org.springframework.web.multipart.MaxUploadSizeExceededException;
 
+@Order(-1)
 @RestControllerAdvice
 public class CatalogExceptionHandler {
     @ExceptionHandler(ProductNotFoundException.class)
