@@ -1,17 +1,18 @@
 .page {
-  display: grid;
   min-height: 100svh;
-  place-items: center;
+  max-width: 1200px;
+  margin: 0 auto;
   padding: 24px;
 }
 
 .card {
-  width: min(100%, 480px);
-  padding: clamp(28px, 6vw, 48px);
+  width: 100%;
+  padding: clamp(24px, 4vw, 40px);
   border: 1px solid #e0e5ee;
   border-radius: 20px;
   background: #fff;
   box-shadow: 0 20px 60px rgb(23 42 77 / 8%);
+  margin-bottom: 24px;
 }
 
 .eyebrow {
@@ -36,8 +37,8 @@ h1 {
 }
 
 .session {
-  margin-top: 32px;
-  padding-top: 24px;
+  margin-top: 20px;
+  padding-top: 20px;
   border-top: 1px solid #e0e5ee;
 }
 
@@ -110,4 +111,224 @@ button:disabled {
   border-radius: 8px;
   background: #fff1f0;
   color: #a12b24;
+}
+
+.storefront {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 300px;
+  gap: 24px;
+  align-items: start;
+}
+
+.catalog-panel,
+.cart-panel {
+  min-width: 0;
+  padding: clamp(20px, 3vw, 32px);
+  border: 1px solid #e0e5ee;
+  border-radius: 20px;
+  background: #fff;
+}
+
+.section-heading,
+.cart-heading,
+.detail-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+h2 {
+  margin: 8px 0 0;
+  color: #17243b;
+  font-size: 1.55rem;
+}
+
+.result-count,
+.cart-empty,
+.cart-note,
+.feedback {
+  color: #5b6575;
+}
+
+.search-form {
+  margin: 28px 0 24px;
+}
+
+.search-form label {
+  display: block;
+  margin-bottom: 8px;
+  color: #344258;
+  font-weight: 600;
+}
+
+.search-controls {
+  display: flex;
+  gap: 10px;
+}
+
+.search-controls input {
+  flex: 1;
+  min-width: 0;
+  min-height: 44px;
+  padding: 10px 14px;
+  border: 1px solid #bcc9e0;
+  border-radius: 10px;
+  font: inherit;
+}
+
+.search-controls input:focus-visible {
+  outline: 3px solid #87a7f7;
+  outline-offset: 2px;
+}
+
+.product-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 16px;
+}
+
+.product-card {
+  display: flex;
+  flex-direction: column;
+  min-height: 220px;
+  padding: 20px;
+  border: 1px solid #e0e5ee;
+  border-radius: 14px;
+}
+
+.product-icon {
+  display: grid;
+  width: 40px;
+  height: 40px;
+  place-items: center;
+  border-radius: 10px;
+  background: #edf2ff;
+  color: #315cc8;
+  font-size: 1.4rem;
+}
+
+.product-card h3 {
+  margin: 18px 0 8px;
+  color: #17243b;
+  font-size: 1.1rem;
+}
+
+.product-price {
+  margin: 0 0 20px;
+  color: #17243b;
+  font-size: 1.15rem;
+  font-weight: 700;
+}
+
+.product-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: auto;
+}
+
+.pagination {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-top: 24px;
+}
+
+.cart-count {
+  display: grid;
+  width: 34px;
+  height: 34px;
+  place-items: center;
+  border-radius: 50%;
+  background: #edf2ff;
+  color: #244aa8;
+  font-weight: 700;
+}
+
+.cart-items {
+  margin: 20px 0;
+  padding: 0;
+  list-style: none;
+}
+
+.cart-items li {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 14px 0;
+  border-bottom: 1px solid #e0e5ee;
+}
+
+.cart-items li div {
+  display: grid;
+  gap: 6px;
+}
+
+.cart-items li span {
+  color: #5b6575;
+}
+
+.remove-button,
+.text-button {
+  min-height: auto;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: #244aa8;
+}
+
+.remove-button:hover,
+.text-button:hover {
+  text-decoration: underline;
+}
+
+.cart-note {
+  margin: 20px 0 0;
+  font-size: 0.9rem;
+  line-height: 1.5;
+}
+
+.detail-panel .eyebrow {
+  display: block;
+  margin-top: 36px;
+}
+
+.detail-description {
+  margin: 20px 0 32px;
+  color: #344258;
+  line-height: 1.7;
+  white-space: pre-wrap;
+}
+
+.detail-price {
+  color: #17243b;
+  font-size: 1.5rem;
+}
+
+@media (max-width: 760px) {
+  .storefront {
+    grid-template-columns: 1fr;
+  }
+
+  .section-heading,
+  .detail-footer {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+}
+
+@media (max-width: 480px) {
+  .page {
+    padding: 14px;
+  }
+
+  .search-controls {
+    flex-direction: column;
+  }
+
+  .pagination {
+    flex-wrap: wrap;
+  }
 }

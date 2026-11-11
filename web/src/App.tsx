@@ -1,5 +1,8 @@
 import { useEffect, useState } from 'react'
 import { keycloak } from './app/keycloak'
+import { formatPrice, type ProductSummary } from './features/catalog/api/products'
+import { CatalogPage } from './features/catalog/pages/CatalogPage'
+import { ProductDetailPage } from './features/catalog/pages/ProductDetailPage'
 import './App.css'
 
 type AppProps = {
@@ -12,6 +15,10 @@ function App({ initializationError = false }: AppProps) {
     initializationError ? 'No se pudo conectar con Keycloak. Revisa que esté en ejecución y recarga la página.' : null,
   )
   const [busy, setBusy] = useState(false)
+  const [query, setQuery] = useState('')
+  const [page, setPage] = useState(0)
+  const [selectedProductId, setSelectedProductId] = useState<string | null>(null)
+  const [cart, setCart] = useState<ProductSummary[]>([])
 
   useEffect(() => {
     keycloak.onAuthSuccess = () => setAuthenticated(true)
@@ -65,12 +72,23 @@ function App({ initializationError = false }: AppProps) {
     }
   }
 
+  function addToCart(product: ProductSummary) {
+    setCart((current) => current.some((item) => item.id === product.id)
+      ? current
+      : [...current, product])
+  }
+
+  function searchProducts(title: string) {
+    setPage(0)
+    setQuery(title)
+  }
+
   return (
     <main className="page">
       <section className="card" aria-labelledby="page-title">
         <span className="eyebrow">Digital Store</span>
         <h1 id="page-title">Tu tienda digital</h1>
-        <p className="intro">Accede a tu cuenta para consultar tus compras y gestionar tu perfil.</p>
+        <p className="intro">Explora productos digitales y prepara tu carrito. Puedes comprar cuando inicies sesión.</p>
 
         {error && <p className="error" role="alert">{error}</p>}
 
@@ -97,6 +115,60 @@ function App({ initializationError = false }: AppProps) {
           </div>
         )}
       </section>
+
+      <div className="storefront">
+        {selectedProductId ? (
+          <ProductDetailPage
+            id={selectedProductId}
+            onBack={() => setSelectedProductId(null)}
+            onAdd={addToCart}
+          />
+        ) : (
+          <CatalogPage
+            query={query}
+            page={page}
+            onSearch={searchProducts}
+            onPageChange={setPage}
+            onOpen={setSelectedProductId}
+            onAdd={addToCart}
+          />
+        )}
+
+        <aside className="cart-panel" aria-labelledby="cart-title">
+          <div className="cart-heading">
+            <div>
+              <span className="eyebrow">Tu selección</span>
+              <h2 id="cart-title">Carrito</h2>
+            </div>
+            <span className="cart-count" aria-live="polite">{cart.length}</span>
+          </div>
+
+          {cart.length === 0 ? (
+            <p className="cart-empty">Añade un producto para verlo aquí.</p>
+          ) : (
+            <ul className="cart-items">
+              {cart.map((item) => (
+                <li key={item.id}>
+                  <div>
+                    <strong>{item.title}</strong>
+                    <span>{formatPrice(item)}</span>
+                  </div>
+                  <button
+                    type="button"
+                    className="remove-button"
+                    aria-label={`Quitar ${item.title} del carrito`}
+                    onClick={() => setCart((current) => current.filter((entry) => entry.id !== item.id))}
+                  >
+                    Quitar
+                  </button>
+                </li>
+              ))}
+            </ul>
+          )}
+
+          <p className="cart-note">El precio final se confirmará al crear el pedido.</p>
+        </aside>
+      </div>
     </main>
   )
 }
