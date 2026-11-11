@@ -143,6 +143,7 @@ services:
       DB_USERNAME_POSTGRES: ${POSTGRES_USER:?Define POSTGRES_USER en .env}
       DB_PASSWORD_POSTGRES: ${POSTGRES_PASSWORD:?Define POSTGRES_PASSWORD en .env}
       KEYCLOAK_JWKS_URI: http://keycloak:8080/realms/digital-store/protocol/openid-connect/certs
+      CATALOG_STORAGE_PATH: /app/files
     volumes:
       - product-files:/app/files
     depends_on:

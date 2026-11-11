@@ -9,16 +9,16 @@ import org.springframework.data.repository.query.Param;
 
 public interface SpringDataProductRepository extends JpaRepository<ProductEntity, UUID> {
     @Query(value = """
-                    SELECT id, sku, title, description, price, currency, status
-                    FROM products
-                    WHERE status = 'PUBLISHED'
-                      AND lower(title) LIKE :pattern ESCAPE '!'
-                    ORDER BY title ASC, id ASC
-                    """, countQuery = """
-                    SELECT count(*)
-                    FROM products
-                    WHERE status = 'PUBLISHED'
-                      AND lower(title) LIKE :pattern ESCAPE '!'
-                    """, nativeQuery = true)
+        SELECT p.*
+        FROM products p
+        WHERE p.status = 'PUBLISHED'
+          AND lower(p.title) LIKE :pattern ESCAPE '!'
+        ORDER BY p.title ASC, p.id ASC
+        """, countQuery = """
+        SELECT count(*)
+        FROM products p
+        WHERE p.status = 'PUBLISHED'
+          AND lower(p.title) LIKE :pattern ESCAPE '!'
+        """, nativeQuery = true)
     Page<ProductEntity> searchPublished(@Param("pattern") String pattern, Pageable pageable);
 }

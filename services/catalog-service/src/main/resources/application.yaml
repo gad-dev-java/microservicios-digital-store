@@ -15,6 +15,7 @@ spring:
       hibernate:
         show_sql: true
         format_sql: true
+    open-in-view: false
   config:
     import: ${SPRING_CONFIG_IMPORT:optional:configserver:http://localhost:8888}
   security:
@@ -23,3 +24,10 @@ spring:
         jwt:
           issuer-uri: http://localhost:8081/realms/digital-store
           jwk-set-uri: ${KEYCLOAK_JWKS_URI:http://localhost:8081/realms/digital-store/protocol/openid-connect/certs}
+  servlet:
+    multipart:
+      max-file-size: 50MB
+      max-request-size: 51MB
+catalog:
+  storage:
+    root: ${CATALOG_STORAGE_PATH:./local-product-files}

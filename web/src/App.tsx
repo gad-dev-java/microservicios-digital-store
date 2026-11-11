@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { keycloak } from './app/keycloak'
+import { AdminProductsPage } from './features/admin/AdminProductsPage'
 import { formatPrice, type ProductSummary } from './features/catalog/api/products'
 import { CatalogPage } from './features/catalog/pages/CatalogPage'
 import { ProductDetailPage } from './features/catalog/pages/ProductDetailPage'
@@ -19,6 +20,7 @@ function App({ initializationError = false }: AppProps) {
   const [page, setPage] = useState(0)
   const [selectedProductId, setSelectedProductId] = useState<string | null>(null)
   const [cart, setCart] = useState<ProductSummary[]>([])
+  const [adminOpen, setAdminOpen] = useState(false)
 
   useEffect(() => {
     keycloak.onAuthSuccess = () => setAuthenticated(true)
@@ -38,6 +40,7 @@ function App({ initializationError = false }: AppProps) {
     : keycloak.hasRealmRole('CUSTOMER')
       ? 'CUSTOMER'
       : 'Sin rol asignado'
+  const isAdmin = authenticated && keycloak.hasRealmRole('ADMIN')
 
   async function startSession() {
     setBusy(true)
@@ -53,6 +56,7 @@ function App({ initializationError = false }: AppProps) {
   async function endSession() {
     setBusy(true)
     setError(null)
+    setAdminOpen(false)
     try {
       await keycloak.logout({ redirectUri: `${window.location.origin}/` })
     } catch {
@@ -88,7 +92,7 @@ function App({ initializationError = false }: AppProps) {
       <section className="card" aria-labelledby="page-title">
         <span className="eyebrow">Digital Store</span>
         <h1 id="page-title">Tu tienda digital</h1>
-        <p className="intro">Explora productos digitales y prepara tu carrito. Puedes comprar cuando inicies sesión.</p>
+        <p className="intro">Explora productos digitales y prepara tu carrito.</p>
 
         {error && <p className="error" role="alert">{error}</p>}
 
@@ -101,6 +105,16 @@ function App({ initializationError = false }: AppProps) {
               <button type="button" className="primary" onClick={openAccount} disabled={busy}>
                 Mi cuenta
               </button>
+              {isAdmin && (
+                <button
+                  type="button"
+                  className="secondary"
+                  aria-pressed={adminOpen}
+                  onClick={() => setAdminOpen((open) => !open)}
+                >
+                  {adminOpen ? 'Ver tienda' : 'Administrar productos'}
+                </button>
+              )}
               <button type="button" className="secondary" onClick={endSession} disabled={busy}>
                 Cerrar sesión
               </button>
@@ -116,7 +130,10 @@ function App({ initializationError = false }: AppProps) {
         )}
       </section>
 
-      <div className="storefront">
+      {isAdmin && adminOpen ? (
+        <AdminProductsPage />
+      ) : (
+        <div className="storefront">
         {selectedProductId ? (
           <ProductDetailPage
             id={selectedProductId}
@@ -168,7 +185,8 @@ function App({ initializationError = false }: AppProps) {
 
           <p className="cart-note">El precio final se confirmará al crear el pedido.</p>
         </aside>
-      </div>
+        </div>
+      )}
     </main>
   )
 }
