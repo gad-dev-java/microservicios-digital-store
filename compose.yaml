@@ -177,6 +177,7 @@ services:
       ORDER_SERVICE_CLIENT_SECRET: ${ORDER_SERVICE_CLIENT_SECRET:?Define ORDER_SERVICE_CLIENT_SECRET en .env}
       KEYCLOAK_TOKEN_URI: http://keycloak:8080/realms/digital-store/protocol/openid-connect/token
       MERCADOPAGO_ACCESS_TOKEN: ${MERCADOPAGO_ACCESS_TOKEN:?Define MERCADOPAGO_ACCESS_TOKEN de prueba en .env}
+      MERCADOPAGO_WEBHOOK_SECRET: ${MERCADOPAGO_WEBHOOK_SECRET:?Define MERCADOPAGO_WEBHOOK_SECRET en .env}
     depends_on:
       postgres:
         condition: service_healthy
