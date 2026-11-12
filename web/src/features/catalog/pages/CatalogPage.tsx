@@ -58,8 +58,8 @@ export function CatalogPage({
     <section className="catalog-panel" aria-labelledby="catalog-title">
       <div className="section-heading">
         <div>
-          <span className="eyebrow">Explorar</span>
-          <h2 id="catalog-title">Productos digitales</h2>
+          <span className="eyebrow">Colección digital</span>
+          <h1 id="catalog-title">Encuentra tu próximo recurso</h1>
         </div>
         {result && !loading && !error && (
           <span className="result-count">{result.totalItems} productos</span>
@@ -74,14 +74,14 @@ export function CatalogPage({
           onSearch(input.trim())
         }}
       >
-        <label htmlFor="product-search">Buscar por título</label>
+        <label htmlFor="product-search">¿Qué te gustaría aprender?</label>
         <div className="search-controls">
           <input
             id="product-search"
             type="search"
             value={input}
             maxLength={100}
-            placeholder="Por ejemplo, Java"
+            placeholder="Busca un tema o producto"
             onChange={(event) => setInput(event.target.value)}
           />
           <button type="submit" className="primary">Buscar</button>
@@ -97,17 +97,24 @@ export function CatalogPage({
             <p className="feedback">No se encontraron productos con ese título.</p>
           ) : (
             <div className="product-grid">
-              {result.items.map((product) => (
+              {result.items.map((product, index) => (
                 <article className="product-card" key={product.id}>
-                  <div className="product-icon" aria-hidden="true">▣</div>
-                  <h3>{product.title}</h3>
-                  <p className="product-price">{formatPrice(product)}</p>
+                  <div className={`product-cover cover-${index % 4}`} aria-hidden="true">
+                    <span className="cover-topline">DIGITAL / {String(index + 1 + page * 12).padStart(2, '0')}</span>
+                    <span className="cover-initials">{product.title.trim().slice(0, 2).toUpperCase()}</span>
+                    <span className="cover-bottomline">CREA A TU RITMO <span>↗</span></span>
+                  </div>
+                  <div className="product-card-body">
+                    <span className="product-tag">Recurso digital</span>
+                    <h3>{product.title}</h3>
+                    <p className="product-price">{formatPrice(product)}</p>
+                  </div>
                   <div className="product-actions">
                     <button type="button" className="secondary" onClick={() => onOpen(product.id)}>
-                      Ver detalle
+                      Ver detalles
                     </button>
                     <button type="button" className="primary" onClick={() => onAdd(product)}>
-                      Añadir
+                      Añadir <span aria-hidden="true">+</span>
                     </button>
                   </div>
                 </article>

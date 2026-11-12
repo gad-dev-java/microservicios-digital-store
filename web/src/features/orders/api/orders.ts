@@ -128,7 +128,7 @@ export async function openCheckout(orderId: string): Promise<CheckoutSession> {
     const knownError: Record<string, string> = {
       ORDER_NOT_FOUND: 'Pedido no encontrado.',
       ORDER_NOT_PAYABLE: 'Este pedido ya no permite iniciar un pago.',
-      PRODUCT_ALREADY_OWNED: 'Ya tienes uno de los productos de este pedido.',
+      PRODUCT_ALREADY_OWNED: 'Ya compraste uno de los productos de este pedido. Revisa tus compras antes de intentar pagar de nuevo.',
       PAYMENT_IN_PROGRESS: 'El intento de pago está en curso o requiere revisión. Consulta el estado del pedido.',
       PAYMENT_PROVIDER_UNAVAILABLE: 'Mercado Pago no está disponible. Consulta el estado del pedido antes de reintentar.',
     }

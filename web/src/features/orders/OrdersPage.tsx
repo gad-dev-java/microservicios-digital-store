@@ -48,14 +48,26 @@ function checkoutUrl(value: string): string {
 export function OrdersPage({ mode }: OrdersPageProps) {
   const [page, setPage] = useState(0)
   const [result, setResult] = useState<OrderPage | null>(null)
+  const [detailOrderId, setDetailOrderId] = useState<string | null>(null)
   const [detail, setDetail] = useState<OrderDetail | null>(null)
+  const [detailError, setDetailError] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [checkoutError, setCheckoutError] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
-  const [detailLoading, setDetailLoading] = useState(false)
+  const [detailLoadingOrderId, setDetailLoadingOrderId] = useState<string | null>(null)
   const [checkoutOrderId, setCheckoutOrderId] = useState<string | null>(null)
   const [reviewOrderId, setReviewOrderId] = useState<string | null>(null)
   const submittingCheckout = useRef(false)
+  const detailRequest = useRef(0)
+  const checkoutDialog = useRef<HTMLDialogElement>(null)
+
+  useEffect(() => {
+    const dialog = checkoutDialog.current
+    if (checkoutError && dialog && !dialog.open) dialog.showModal()
+    if (!checkoutError && dialog?.open) dialog.close()
+  }, [checkoutError])
+
+  useEffect(() => () => { detailRequest.current += 1 }, [])
 
   useEffect(() => {
     const controller = new AbortController()
@@ -80,7 +92,11 @@ export function OrdersPage({ mode }: OrdersPageProps) {
     setLoading(true)
     setError(null)
     setCheckoutError(null)
+    detailRequest.current += 1
+    setDetailOrderId(null)
     setDetail(null)
+    setDetailError(null)
+    setDetailLoadingOrderId(null)
     setReviewOrderId(null)
     setPage(nextPage)
   }
@@ -94,15 +110,29 @@ export function OrdersPage({ mode }: OrdersPageProps) {
   }
 
   async function openDetail(id: string) {
-    if (detailLoading) return
-    setError(null)
-    setDetailLoading(true)
+    if (detailOrderId === id) {
+      detailRequest.current += 1
+      setDetailOrderId(null)
+      setDetail(null)
+      setDetailError(null)
+      setDetailLoadingOrderId(null)
+      return
+    }
+
+    const request = ++detailRequest.current
+    setDetailOrderId(id)
+    setDetail(null)
+    setDetailError(null)
+    setDetailLoadingOrderId(id)
     try {
-      setDetail(await getMyOrder(id))
+      const order = await getMyOrder(id)
+      if (request === detailRequest.current) setDetail(order)
     } catch (cause) {
-      setError(cause instanceof Error ? cause.message : 'No se pudo abrir el pedido.')
+      if (request === detailRequest.current) {
+        setDetailError(cause instanceof Error ? cause.message : 'No se pudo abrir el pedido.')
+      }
     } finally {
-      setDetailLoading(false)
+      if (request === detailRequest.current) setDetailLoadingOrderId(null)
     }
   }
 
@@ -118,15 +148,15 @@ export function OrdersPage({ mode }: OrdersPageProps) {
       window.location.assign(checkoutUrl(session.checkoutUrl))
     } catch (cause) {
       const message = cause instanceof Error ? cause.message : 'No se pudo abrir el pago.'
-      try {
-        setResult(await listOrders(mode, page))
-        if (detail?.order.id === orderId) setDetail(await getMyOrder(orderId))
-      } catch {
-        // La consulta de estado es auxiliar; conservamos el error original del checkout.
-      }
       setCheckoutError(message)
       setCheckoutOrderId(null)
       submittingCheckout.current = false
+      try {
+        setResult(await listOrders(mode, page))
+        if (detailOrderId === orderId) setDetail(await getMyOrder(orderId))
+      } catch {
+        // La consulta de estado es auxiliar; conservamos el error original del checkout.
+      }
     }
   }
 
@@ -142,7 +172,6 @@ export function OrdersPage({ mode }: OrdersPageProps) {
 
       {loading && <p role="status">Cargando pedidos…</p>}
       {error && <p className="error" role="alert">{error}</p>}
-      {checkoutError && <p className="error" role="alert">{checkoutError}</p>}
       {!loading && !error && result?.items.length === 0 && (
         <p>{mode === 'mine' ? 'Todavía no tienes pedidos.' : 'Todavía no hay pedidos.'}</p>
       )}
@@ -152,14 +181,14 @@ export function OrdersPage({ mode }: OrdersPageProps) {
           {result.items.map((order) => (
             <li key={order.id} className="orders-list-item">
               <div className="orders-item-heading">
-                <strong>Pedido {order.id}</strong>
-                <span>{orderStates[order.status] ?? order.status}</span>
+                <div><span className="order-id-label">Pedido #{order.id.slice(0, 8).toUpperCase()}</span><small className="order-full-id">{order.id}</small></div>
+                <span className={`order-status order-status-${order.status.toLowerCase()}`}>{orderStates[order.status] ?? order.status}</span>
               </div>
               {mode === 'admin' && <p>Comprador: {order.buyerEmail}</p>}
               <p>Creado: {formatDate(order.createdAt)}</p>
-              <p>Pago: {order.paymentStatus
+              <p>Pago: <span className="payment-state">{order.paymentStatus
                 ? paymentStates[order.paymentStatus] ?? order.paymentStatus
-                : 'Aún sin intento'}</p>
+                : 'Aún sin intento'}</span></p>
               {order.paymentStatus === 'REVIEW_REQUIRED' && order.reviewReason && (
                 <p>Motivo de revisión: {order.reviewReason}</p>
               )}
@@ -173,9 +202,11 @@ export function OrdersPage({ mode }: OrdersPageProps) {
                     type="button"
                     className="secondary"
                     onClick={() => void openDetail(order.id)}
-                    disabled={detailLoading || checkoutOrderId !== null}
+                    aria-expanded={detailOrderId === order.id}
+                    aria-controls={detailOrderId === order.id ? `order-detail-${order.id}` : undefined}
+                    disabled={checkoutOrderId !== null}
                   >
-                    Ver detalle
+                    {detailOrderId === order.id ? 'Ocultar detalle' : 'Ver detalle'}
                   </button>
                   {canOpenCheckout(order) && (
                     <button
@@ -192,6 +223,44 @@ export function OrdersPage({ mode }: OrdersPageProps) {
                     </button>
                   )}
                 </div>
+              )}
+              {mode === 'mine' && detailOrderId === order.id && (
+                <section id={`order-detail-${order.id}`} className="orders-detail" aria-label={`Detalle del pedido ${order.id}`}>
+                  <div className="orders-detail-heading">
+                    <h3>Detalle del pedido</h3>
+                    <button type="button" className="text-button" onClick={() => void openDetail(order.id)}>Cerrar</button>
+                  </div>
+                  {detailLoadingOrderId === order.id && <p role="status">Cargando detalle…</p>}
+                  {detailError && <p className="error" role="alert">{detailError}</p>}
+                  {detail?.order.id === order.id && (
+                    <>
+                      <div className="orders-detail-meta">
+                        <p><span>Número</span><strong>{detail.order.id}</strong></p>
+                        <p><span>Estado</span><strong>{orderStates[detail.order.status] ?? detail.order.status}</strong></p>
+                        <p><span>Pago</span><strong>{detail.order.paymentStatus
+                          ? paymentStates[detail.order.paymentStatus] ?? detail.order.paymentStatus
+                          : 'Aún sin intento'}</strong></p>
+                        {detail.order.paidAt && <p><span>Pagado</span><strong>{formatDate(detail.order.paidAt)}</strong></p>}
+                        {detail.order.paymentStatus === 'REVIEW_REQUIRED' && detail.order.reviewReason && (
+                          <p><span>Motivo de revisión</span><strong>{detail.order.reviewReason}</strong></p>
+                        )}
+                      </div>
+                      <h4>Productos</h4>
+                      <ul className="orders-detail-items">
+                        {detail.items.map((item) => (
+                          <li key={item.productId}>
+                            <span><strong>{item.title}</strong><small>SKU: {item.sku}</small></span>
+                            <strong>{formatPrice({ price: item.unitPrice, currency: detail.order.currency })}</strong>
+                          </li>
+                        ))}
+                      </ul>
+                      <div className="orders-detail-total"><span>Total</span><strong>{formatPrice({
+                        price: detail.order.totalAmount,
+                        currency: detail.order.currency,
+                      })}</strong></div>
+                    </>
+                  )}
+                </section>
               )}
               {mode === 'admin' && (
                 <div className="orders-payment-actions">
@@ -235,54 +304,25 @@ export function OrdersPage({ mode }: OrdersPageProps) {
         </nav>
       )}
 
-      {detailLoading && <p role="status">Cargando detalle…</p>}
-      {detail && (
-        <section className="order-confirmation orders-detail" aria-label="Detalle del pedido">
-          <div className="orders-item-heading">
-            <h3>Detalle del pedido</h3>
-            <button type="button" className="secondary" onClick={() => setDetail(null)}>
-              Cerrar
-            </button>
-          </div>
-          <p>Número: {detail.order.id}</p>
-          <p>Estado: {orderStates[detail.order.status] ?? detail.order.status}</p>
-          <p>Pago: {detail.order.paymentStatus
-            ? paymentStates[detail.order.paymentStatus] ?? detail.order.paymentStatus
-            : 'Aún sin intento'}</p>
-          {detail.order.paidAt && <p>Pagado: {formatDate(detail.order.paidAt)}</p>}
-          {detail.order.paymentStatus === 'REVIEW_REQUIRED' && detail.order.reviewReason && (
-            <p>Motivo de revisión: {detail.order.reviewReason}</p>
-          )}
-          <ul>
-            {detail.items.map((item) => (
-              <li key={item.productId}>
-                {item.title} ({item.sku}) — {formatPrice({
-                  price: item.unitPrice,
-                  currency: detail.order.currency,
-                })}
-              </li>
-            ))}
-          </ul>
-          <p>Total: <strong>{formatPrice({
-            price: detail.order.totalAmount,
-            currency: detail.order.currency,
-          })}</strong></p>
-          {canOpenCheckout(detail.order) && (
-            <button
-              type="button"
-              className="primary"
-              onClick={() => void pay(detail.order.id)}
-              disabled={checkoutOrderId !== null}
-            >
-              {checkoutOrderId === detail.order.id
-                ? 'Abriendo checkout…'
-                : detail.order.paymentStatus === 'PENDING'
-                  ? 'Continuar pago'
-                  : 'Pagar con Mercado Pago'}
-            </button>
-          )}
-        </section>
-      )}
+      <dialog
+        ref={checkoutDialog}
+        className="checkout-dialog"
+        role="alertdialog"
+        aria-labelledby="checkout-dialog-title"
+        aria-describedby="checkout-dialog-description"
+        onClose={() => setCheckoutError(null)}
+        onClick={(event) => {
+          if (event.target === event.currentTarget) event.currentTarget.close()
+        }}
+      >
+        <div className="checkout-dialog-heading">
+          <span className="checkout-dialog-icon" aria-hidden="true">!</span>
+          <button type="button" className="dialog-close" aria-label="Cerrar aviso" onClick={() => checkoutDialog.current?.close()}>×</button>
+        </div>
+        <h2 id="checkout-dialog-title">No se pudo continuar con el pago</h2>
+        <p id="checkout-dialog-description">{checkoutError}</p>
+        <button type="button" className="primary" onClick={() => checkoutDialog.current?.close()}>Entendido</button>
+      </dialog>
     </section>
   )
 }
