@@ -1,6 +1,6 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { formatPrice } from '../catalog/api/products'
-import { getMyOrder, listOrders, type OrderDetail, type OrderPage } from './api/orders'
+import { getMyOrder, listOrders, openCheckout, type OrderDetail, type OrderPage, type OrderSummary } from './api/orders'
 
 type OrdersPageProps = {
   mode: 'mine' | 'admin'
@@ -30,13 +30,30 @@ function formatDate(value: string): string {
   }).format(new Date(value))
 }
 
+function canOpenCheckout(order: OrderSummary): boolean {
+  return ['CREATED', 'PENDING_PAYMENT', 'PAYMENT_FAILED'].includes(order.status)
+    && !['CREATING', 'REVIEW_REQUIRED'].includes(order.paymentStatus ?? '')
+}
+
+function checkoutUrl(value: string): string {
+  const url = new URL(value)
+  const host = url.hostname.toLowerCase()
+  if (url.protocol !== 'https:' || (host !== 'mercadopago.com.pe' && !host.endsWith('.mercadopago.com.pe'))) {
+    throw new Error('La dirección del checkout no es válida.')
+  }
+  return url.href
+}
+
 export function OrdersPage({ mode }: OrdersPageProps) {
   const [page, setPage] = useState(0)
   const [result, setResult] = useState<OrderPage | null>(null)
   const [detail, setDetail] = useState<OrderDetail | null>(null)
   const [error, setError] = useState<string | null>(null)
+  const [checkoutError, setCheckoutError] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
   const [detailLoading, setDetailLoading] = useState(false)
+  const [checkoutOrderId, setCheckoutOrderId] = useState<string | null>(null)
+  const submittingCheckout = useRef(false)
 
   useEffect(() => {
     const controller = new AbortController()
@@ -60,6 +77,7 @@ export function OrdersPage({ mode }: OrdersPageProps) {
   function changePage(nextPage: number) {
     setLoading(true)
     setError(null)
+    setCheckoutError(null)
     setDetail(null)
     setPage(nextPage)
   }
@@ -77,6 +95,30 @@ export function OrdersPage({ mode }: OrdersPageProps) {
     }
   }
 
+  async function pay(orderId: string) {
+    if (submittingCheckout.current) return
+    submittingCheckout.current = true
+    setCheckoutOrderId(orderId)
+    setError(null)
+    setCheckoutError(null)
+
+    try {
+      const session = await openCheckout(orderId)
+      window.location.assign(checkoutUrl(session.checkoutUrl))
+    } catch (cause) {
+      const message = cause instanceof Error ? cause.message : 'No se pudo abrir el pago.'
+      try {
+        setResult(await listOrders(mode, page))
+        if (detail?.order.id === orderId) setDetail(await getMyOrder(orderId))
+      } catch {
+        // La consulta de estado es auxiliar; conservamos el error original del checkout.
+      }
+      setCheckoutError(message)
+      setCheckoutOrderId(null)
+      submittingCheckout.current = false
+    }
+  }
+
   return (
     <section className="card orders-panel" aria-labelledby="orders-title">
       <div className="orders-heading">
@@ -89,6 +131,7 @@ export function OrdersPage({ mode }: OrdersPageProps) {
 
       {loading && <p role="status">Cargando pedidos…</p>}
       {error && <p className="error" role="alert">{error}</p>}
+      {checkoutError && <p className="error" role="alert">{checkoutError}</p>}
       {!loading && !error && result?.items.length === 0 && (
         <p>{mode === 'mine' ? 'Todavía no tienes pedidos.' : 'Todavía no hay pedidos.'}</p>
       )}
@@ -112,14 +155,36 @@ export function OrdersPage({ mode }: OrdersPageProps) {
                 currency: order.currency,
               })}</strong></p>
               {mode === 'mine' && (
-                <button
-                  type="button"
-                  className="secondary"
-                  onClick={() => void openDetail(order.id)}
-                  disabled={detailLoading}
-                >
-                  Ver detalle
-                </button>
+                <div className="orders-payment-actions">
+                  <button
+                    type="button"
+                    className="secondary"
+                    onClick={() => void openDetail(order.id)}
+                    disabled={detailLoading || checkoutOrderId !== null}
+                  >
+                    Ver detalle
+                  </button>
+                  {canOpenCheckout(order) && (
+                    <button
+                      type="button"
+                      className="primary"
+                      onClick={() => void pay(order.id)}
+                      disabled={checkoutOrderId !== null}
+                    >
+                      {checkoutOrderId === order.id
+                        ? 'Abriendo checkout…'
+                        : order.paymentStatus === 'PENDING'
+                          ? 'Continuar pago'
+                          : 'Pagar con Mercado Pago'}
+                    </button>
+                  )}
+                </div>
+              )}
+              {mode === 'mine' && order.paymentStatus === 'CREATING' && (
+                <p>El pago se está preparando. Consulta el estado antes de volver a intentarlo.</p>
+              )}
+              {mode === 'mine' && order.paymentStatus === 'REVIEW_REQUIRED' && (
+                <p>El pago está en revisión. No inicies otro checkout.</p>
               )}
             </li>
           ))}
@@ -128,13 +193,13 @@ export function OrdersPage({ mode }: OrdersPageProps) {
 
       {!loading && !error && result && result.totalPages > 1 && (
         <nav className="pagination" aria-label="Páginas de pedidos">
-          <button type="button" disabled={page === 0} onClick={() => changePage(page - 1)}>
+          <button type="button" disabled={page === 0 || checkoutOrderId !== null} onClick={() => changePage(page - 1)}>
             Anterior
           </button>
           <span>Página {page + 1} de {result.totalPages}</span>
           <button
             type="button"
-            disabled={page + 1 >= result.totalPages}
+            disabled={page + 1 >= result.totalPages || checkoutOrderId !== null}
             onClick={() => changePage(page + 1)}
           >
             Siguiente
@@ -172,6 +237,20 @@ export function OrdersPage({ mode }: OrdersPageProps) {
             price: detail.order.totalAmount,
             currency: detail.order.currency,
           })}</strong></p>
+          {canOpenCheckout(detail.order) && (
+            <button
+              type="button"
+              className="primary"
+              onClick={() => void pay(detail.order.id)}
+              disabled={checkoutOrderId !== null}
+            >
+              {checkoutOrderId === detail.order.id
+                ? 'Abriendo checkout…'
+                : detail.order.paymentStatus === 'PENDING'
+                  ? 'Continuar pago'
+                  : 'Pagar con Mercado Pago'}
+            </button>
+          )}
         </section>
       )}
     </section>
