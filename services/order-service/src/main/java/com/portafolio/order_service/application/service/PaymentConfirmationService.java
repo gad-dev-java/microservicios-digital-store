@@ -39,27 +39,27 @@ public class PaymentConfirmationService {
         StoreOrder order = store.lockOrder(attempt.orderId());
 
         if ("APPROVED".equals(attempt.status())) {
-            receipts.markProcessed(notificationId);
+            markReceiptProcessed(notificationId);
             return;
         }
 
         String mismatch = mismatch(attempt, order, provider, notificationLiveMode);
         if (mismatch != null) {
             store.markReview(attempt, provider, mismatch);
-            receipts.markProcessed(notificationId);
+            markReceiptProcessed(notificationId);
             return;
         }
 
         if ("processed".equals(provider.status()) && !"accredited".equals(provider.statusDetail())) {
             store.markReview(attempt, provider, "STATUS_MISMATCH");
-            receipts.markProcessed(notificationId);
+            markReceiptProcessed(notificationId);
             return;
         }
 
         // Una discrepancia previa sigue bloqueada hasta su revisión.
         // UNRESOLVED_TIMEOUT puede resolverse con un estado definitivo del proveedor.
         if ("REVIEW_REQUIRED".equals(attempt.status()) && !"UNRESOLVED_TIMEOUT".equals(attempt.reviewReason())) {
-            receipts.markProcessed(notificationId);
+            markReceiptProcessed(notificationId);
             return;
         }
 
@@ -77,19 +77,19 @@ public class PaymentConfirmationService {
                 store.updateProviderStatus(attempt, provider);
             }
 
-            receipts.markProcessed(notificationId);
+            markReceiptProcessed(notificationId);
             return;
         }
 
         if (provider.totalPaidAmount() == null || provider.totalPaidAmount().compareTo(order.totalAmount()) != 0) {
             store.markReview(attempt, provider, "AMOUNT_MISMATCH");
-            receipts.markProcessed(notificationId);
+            markReceiptProcessed(notificationId);
             return;
         }
 
         if ("PAID".equals(order.status())) {
             store.approveAttempt(attempt, provider, "DUPLICATE_PAYMENT");
-            receipts.markProcessed(notificationId);
+            markReceiptProcessed(notificationId);
             return;
         }
 
@@ -97,7 +97,18 @@ public class PaymentConfirmationService {
         store.markOrderPaid(order.id());
         store.approveAttempt(attempt, provider, granted < order.itemCount() ? "DUPLICATE_PURCHASE" : null);
         store.enqueueOrderPaid(order);
-        receipts.markProcessed(notificationId);
+        markReceiptProcessed(notificationId);
+    }
+
+    @Transactional
+    public void applyFromReconciliation(ProviderOrderSnapshot provider) {
+        apply(null, provider, expectedLiveMode);
+    }
+
+    private void markReceiptProcessed(String notificationId) {
+        if (notificationId != null) {
+            receipts.markProcessed(notificationId);
+        }
     }
 
     private String mismatch(

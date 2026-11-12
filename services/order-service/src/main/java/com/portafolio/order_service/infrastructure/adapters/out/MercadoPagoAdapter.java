@@ -2,6 +2,7 @@ package com.portafolio.order_service.infrastructure.adapters.out;
 
 import com.portafolio.order_service.application.ports.out.PaymentGatewayPort;
 import com.portafolio.order_service.application.ports.out.ProviderOrderSnapshot;
+import com.portafolio.order_service.application.ports.out.ProviderRateLimitException;
 import com.portafolio.order_service.domain.exceptions.OrderException;
 import com.portafolio.order_service.domain.models.Attempt;
 import com.portafolio.order_service.domain.models.ProviderResult;
@@ -9,9 +10,17 @@ import com.portafolio.order_service.domain.models.Reason;
 import io.github.resilience4j.circuitbreaker.CircuitBreaker;
 import java.math.BigDecimal;
 import java.net.URI;
+import java.time.Duration;
+import java.time.Instant;
+import java.time.ZonedDateTime;
+import java.time.format.DateTimeFormatter;
+import java.util.ArrayList;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Set;
+import java.util.UUID;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
@@ -87,7 +96,7 @@ public class MercadoPagoAdapter implements PaymentGatewayPort {
                     "Mercado Pago rechazó la creación: HTTP {}, intento={}",
                     exception.getStatusCode().value(),
                     attempt.id());
-            throw unavailable();
+            throw providerError(exception);
         } catch (OrderException exception) {
             throw exception;
         } catch (RuntimeException exception) {
@@ -131,6 +140,9 @@ public class MercadoPagoAdapter implements PaymentGatewayPort {
                     scalar(response, "status_detail"),
                     liveMode,
                     applicationId);
+
+        } catch (RestClientResponseException exception) {
+            throw providerError(exception);
         } catch (OrderException exception) {
             throw exception;
         } catch (RuntimeException exception) {
@@ -140,6 +152,127 @@ public class MercadoPagoAdapter implements PaymentGatewayPort {
                     providerOrderId);
             throw unavailable();
         }
+    }
+
+    @Override
+    public List<String> findOrderIds(UUID externalReference, Instant begin, Instant end) {
+        requireConfigured();
+
+        int offset = 0;
+        int limit = 20;
+        Set<String> ids = new LinkedHashSet<>();
+
+        try {
+            while (true) {
+                int currentOffset = offset;
+                Map<?, ?> page = breaker.executeSupplier(() -> client.get()
+                        .uri(builder -> builder.path("/v1/orders")
+                                .queryParam("begin_date", begin.toString())
+                                .queryParam("end_date", end.toString())
+                                .queryParam("external_reference", externalReference.toString())
+                                .queryParam("offset", currentOffset)
+                                .queryParam("limit", limit)
+                                .build())
+                        .header("Authorization", "Bearer " + accessToken)
+                        .retrieve()
+                        .body(Map.class));
+
+                if (page == null
+                        || !(page.get("data") instanceof List<?> data)
+                        || !(page.get("paging") instanceof Map<?, ?> paging)) {
+                    throw unavailable();
+                }
+
+                for (Object element : data) {
+                    if (element instanceof Map<?, ?> order
+                            && externalReference.toString().equals(scalar(order, "external_reference"))) {
+                        String id = scalar(order, "id");
+                        if (id != null && !id.isBlank()) {
+                            ids.add(id);
+                        }
+                    }
+                }
+
+                String totalText = scalar(paging, "total");
+                if (totalText == null) {
+                    throw unavailable();
+                }
+
+                int total = Integer.parseInt(totalText);
+                offset += limit;
+
+                if (offset >= total) {
+                    return new ArrayList<>(ids);
+                }
+                if (data.isEmpty()) {
+                    throw unavailable();
+                }
+            }
+        } catch (RestClientResponseException exception) {
+            throw providerError(exception);
+        } catch (OrderException exception) {
+            throw exception;
+        } catch (RuntimeException exception) {
+            throw unavailable();
+        }
+    }
+
+    @Override
+    public ProviderResult checkoutFor(String providerOrderId) {
+        requireConfigured();
+
+        try {
+            Map<?, ?> response = breaker.executeSupplier(() -> client.get()
+                    .uri("/v1/orders/{id}", providerOrderId)
+                    .header("Authorization", "Bearer " + accessToken)
+                    .retrieve()
+                    .body(Map.class));
+
+            if (response == null || !providerOrderId.equals(scalar(response, "id"))) {
+                throw unavailable();
+            }
+
+            String checkoutUrl = scalar(response, "checkout_url");
+            if (checkoutUrl != null && !validCheckoutUrl(checkoutUrl)) {
+                throw unavailable();
+            }
+
+            return new ProviderResult(providerOrderId, checkoutUrl);
+        } catch (RestClientResponseException exception) {
+            throw providerError(exception);
+        } catch (OrderException exception) {
+            throw exception;
+        } catch (RuntimeException exception) {
+            throw unavailable();
+        }
+    }
+
+    private OrderException providerError(RestClientResponseException exception) {
+        if (exception.getStatusCode().value() != 429) {
+            return unavailable();
+        }
+
+        String value = exception.getResponseHeaders() == null
+                ? null
+                : exception.getResponseHeaders().getFirst("Retry-After");
+
+        Duration delay = Duration.ofSeconds(30);
+        if (value != null) {
+            try {
+                delay = Duration.ofSeconds(Long.parseLong(value));
+            } catch (NumberFormatException ignored) {
+                try {
+                    Instant retryAt = ZonedDateTime.parse(value, DateTimeFormatter.RFC_1123_DATE_TIME)
+                            .toInstant();
+                    delay = Duration.between(Instant.now(), retryAt);
+                } catch (RuntimeException invalidDate) {
+                    delay = Duration.ofSeconds(30);
+                }
+            }
+        }
+
+        long seconds = Math.max(1, delay.toSeconds());
+        return new ProviderRateLimitException(Duration.ofSeconds(seconds));
     }
 
     private ProviderResult validateResponse(Map<?, ?> response, Attempt attempt) {
