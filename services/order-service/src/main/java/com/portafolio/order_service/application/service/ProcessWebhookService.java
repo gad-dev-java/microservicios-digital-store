@@ -2,6 +2,7 @@ package com.portafolio.order_service.application.service;
 
 import com.portafolio.order_service.application.ports.in.ProcessWebhookUseCase;
 import com.portafolio.order_service.application.ports.out.PaymentGatewayPort;
+import com.portafolio.order_service.application.ports.out.ProviderOrderSnapshot;
 import com.portafolio.order_service.application.ports.out.WebhookReceiptPort;
 import com.portafolio.order_service.domain.exceptions.OrderException;
 import com.portafolio.order_service.domain.models.Reason;
@@ -13,22 +14,28 @@ import org.springframework.stereotype.Service;
 public class ProcessWebhookService implements ProcessWebhookUseCase {
     private final WebhookReceiptPort receipts;
     private final PaymentGatewayPort paymentGateway;
+    private final PaymentConfirmationService confirmation;
 
     @Override
-    public void process(String notificationId, String providerOrderId, String action, String payload) {
+    public void process(
+            String notificationId,
+            String providerOrderId,
+            String action,
+            String payload,
+            Boolean notificationLiveMode) {
         if (receipts.registration(notificationId, providerOrderId, action, payload)) {
             return;
         }
 
         try {
-            paymentGateway.verifyOrderExists(providerOrderId);
+            ProviderOrderSnapshot provider = paymentGateway.getOrder(providerOrderId);
+            confirmation.apply(notificationId, provider, notificationLiveMode);
         } catch (RuntimeException exception) {
             receipts.markFailed(notificationId);
-            throw new OrderException(Reason.PAYMENT_PROVIDER_UNAVAILABLE, "No se pudo verificar la orden notificada");
+            if (exception instanceof OrderException orderException) {
+                throw orderException;
+            }
+            throw new OrderException(Reason.PAYMENT_PROVIDER_UNAVAILABLE, "No se pudo confirmar la orden notificada");
         }
-
-        // HU-08 confirma la recepción y consulta.
-        // HU-09 aplicará el pago y entonces cambiará el recibo a PROCESSED.
-        receipts.markReceived(notificationId);
     }
 }

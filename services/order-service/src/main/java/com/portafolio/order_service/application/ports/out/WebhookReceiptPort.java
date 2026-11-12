@@ -6,4 +6,6 @@ public interface WebhookReceiptPort {
     void markReceived(String notificationId);
 
     void markFailed(String notificationId);
+
+    void markProcessed(String notificationId);
 }

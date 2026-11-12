@@ -59,4 +59,6 @@ jobs:
           ORDER_SERVICE_CLIENT_SECRET: ci-placeholder
           MERCADOPAGO_ACCESS_TOKEN: ci-placeholder
           MERCADOPAGO_WEBHOOK_SECRET: ci-placeholder
+          MERCADOPAGO_APPLICATION_ID: ci-placeholder
+          MERCADOPAGO_EXPECTED_LIVE_MODE: 'false'
         run: docker compose build

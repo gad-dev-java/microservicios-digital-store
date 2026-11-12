@@ -74,7 +74,10 @@ public class MercadoPagoWebhookController {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Notificación inválida");
         }
 
-        processWebhook.process(notificationId, dataId, action, payload);
+        JsonNode liveModeNode = body.path("live_mode");
+        Boolean notificationLiveMode = liveModeNode.isBoolean() ? liveModeNode.asBoolean() : null;
+
+        processWebhook.process(notificationId, dataId, action, payload, notificationLiveMode);
     }
 
     private static String sha256(String value) {
