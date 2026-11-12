@@ -1,6 +1,7 @@
 package com.portafolio.order_service.infrastructure.adapters.out;
 
 import com.portafolio.order_service.application.ports.out.PaymentGatewayPort;
+import com.portafolio.order_service.application.ports.out.ProviderOrderSnapshot;
 import com.portafolio.order_service.domain.exceptions.OrderException;
 import com.portafolio.order_service.domain.models.Attempt;
 import com.portafolio.order_service.domain.models.ProviderResult;
@@ -99,7 +100,7 @@ public class MercadoPagoAdapter implements PaymentGatewayPort {
     }
 
     @Override
-    public void verifyOrderExists(String providerOrderId) {
+    public ProviderOrderSnapshot getOrder(String providerOrderId) {
         requireConfigured();
 
         try {
@@ -109,9 +110,27 @@ public class MercadoPagoAdapter implements PaymentGatewayPort {
                     .retrieve()
                     .body(Map.class));
 
-            if (response == null || !providerOrderId.equals(string(response, "id"))) {
+            if (response == null || !providerOrderId.equals(scalar(response, "id"))) {
                 throw unavailable();
             }
+
+            String applicationId = null;
+            if (response.get("integration_data") instanceof Map<?, ?> integration) {
+                applicationId = scalar(integration, "application_id");
+            }
+
+            Boolean liveMode = response.get("live_mode") instanceof Boolean value ? value : null;
+
+            return new ProviderOrderSnapshot(
+                    providerOrderId,
+                    scalar(response, "external_reference"),
+                    decimal(response, "total_amount"),
+                    decimal(response, "total_paid_amount"),
+                    scalar(response, "currency"),
+                    scalar(response, "status"),
+                    scalar(response, "status_detail"),
+                    liveMode,
+                    applicationId);
         } catch (OrderException exception) {
             throw exception;
         } catch (RuntimeException exception) {
@@ -167,5 +186,20 @@ public class MercadoPagoAdapter implements PaymentGatewayPort {
 
     private OrderException unavailable() {
         return new OrderException(Reason.PAYMENT_PROVIDER_UNAVAILABLE, "No se pudo abrir el checkout de prueba");
+    }
+
+    private String scalar(Map<?, ?> values, String key) {
+        Object value = values.get(key);
+        return value == null ? null : value.toString();
+    }
+
+    private BigDecimal decimal(Map<?, ?> values, String key) {
+        String value = scalar(values, key);
+        if (value == null) return null;
+        try {
+            return new BigDecimal(value);
+        } catch (NumberFormatException exception) {
+            return null;
+        }
     }
 }

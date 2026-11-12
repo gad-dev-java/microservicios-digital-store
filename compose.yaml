@@ -178,6 +178,8 @@ services:
       KEYCLOAK_TOKEN_URI: http://keycloak:8080/realms/digital-store/protocol/openid-connect/token
       MERCADOPAGO_ACCESS_TOKEN: ${MERCADOPAGO_ACCESS_TOKEN:?Define MERCADOPAGO_ACCESS_TOKEN de prueba en .env}
       MERCADOPAGO_WEBHOOK_SECRET: ${MERCADOPAGO_WEBHOOK_SECRET:?Define MERCADOPAGO_WEBHOOK_SECRET en .env}
+      MERCADOPAGO_APPLICATION_ID: ${MERCADOPAGO_APPLICATION_ID:-}
+      MERCADOPAGO_EXPECTED_LIVE_MODE: ${MERCADOPAGO_EXPECTED_LIVE_MODE:-false}
     depends_on:
       postgres:
         condition: service_healthy

@@ -8,5 +8,5 @@ public interface PaymentGatewayPort {
 
     ProviderResult create(Attempt attempt);
 
-    void verifyOrderExists(String providerOrderId);
+    ProviderOrderSnapshot getOrder(String providerOrderId);
 }

@@ -51,4 +51,16 @@ public class JdbcWebhookReceiptAdapter implements WebhookReceiptPort {
                   AND status <> 'PROCESSED'
                 """, notificationId);
     }
+
+    @Override
+    public void markProcessed(String notificationId) {
+        jdbc.update("""
+            UPDATE webhook_receipts
+            SET status = 'PROCESSED',
+                processed_at = now(),
+                last_error = NULL
+            WHERE provider_notification_id = ?
+              AND status <> 'PROCESSED'
+            """, notificationId);
+    }
 }
