@@ -152,14 +152,14 @@ export function OrdersPage({ mode }: OrdersPageProps) {
           {result.items.map((order) => (
             <li key={order.id} className="orders-list-item">
               <div className="orders-item-heading">
-                <strong>Pedido {order.id}</strong>
-                <span>{orderStates[order.status] ?? order.status}</span>
+                <div><span className="order-id-label">Pedido #{order.id.slice(0, 8).toUpperCase()}</span><small className="order-full-id">{order.id}</small></div>
+                <span className={`order-status order-status-${order.status.toLowerCase()}`}>{orderStates[order.status] ?? order.status}</span>
               </div>
               {mode === 'admin' && <p>Comprador: {order.buyerEmail}</p>}
               <p>Creado: {formatDate(order.createdAt)}</p>
-              <p>Pago: {order.paymentStatus
+              <p>Pago: <span className="payment-state">{order.paymentStatus
                 ? paymentStates[order.paymentStatus] ?? order.paymentStatus
-                : 'Aún sin intento'}</p>
+                : 'Aún sin intento'}</span></p>
               {order.paymentStatus === 'REVIEW_REQUIRED' && order.reviewReason && (
                 <p>Motivo de revisión: {order.reviewReason}</p>
               )}

@@ -6,6 +6,7 @@ import { CatalogPage } from './features/catalog/pages/CatalogPage'
 import { ProductDetailPage } from './features/catalog/pages/ProductDetailPage'
 import { createOrder, type CreatedOrder } from './features/orders/api/orders'
 import { OrdersPage } from './features/orders/OrdersPage'
+import heroArt from './assets/hero.png'
 import './App.css'
 
 type AppProps = {
@@ -142,169 +143,133 @@ function App({ initializationError = false }: AppProps) {
     setQuery(title)
   }
 
+  function openStore() {
+    setAdminOpen(false)
+    setOrdersMode(null)
+    setSelectedProductId(null)
+  }
+
+  const showingStore = ordersMode === null && !adminOpen
+
   return (
-    <main className="page">
-      <section className="card" aria-labelledby="page-title">
-        <span className="eyebrow">Digital Store</span>
-        <h1 id="page-title">Tu tienda digital</h1>
-        <p className="intro">Explora productos digitales y prepara tu carrito.</p>
-
-        {error && <p className="error" role="alert">{error}</p>}
-
-        {authenticated ? (
-          <div className="session">
-            <p className="session-label">Sesión iniciada</p>
-            <p className="user-name">{name}</p>
-            <p className="user-role">Rol: {role}</p>
-            <div className="actions">
-              <button type="button" className="primary" onClick={openAccount} disabled={busy}>
-                Mi cuenta
-              </button>
-              {keycloak.hasRealmRole('CUSTOMER') && (
-                <button
-                  type="button"
-                  className="secondary"
-                  aria-pressed={ordersMode === 'mine'}
-                  onClick={() => {
-                    setAdminOpen(false)
-                    setOrdersMode((current) => current === 'mine' ? null : 'mine')
-                  }}
-                  disabled={busy}
-                >
-                  {ordersMode === 'mine' ? 'Ver tienda' : 'Mis pedidos'}
-                </button>
-              )}
-              {isAdmin && (
-                <button
-                  type="button"
-                  className="secondary"
-                  aria-pressed={adminOpen}
-                  onClick={() => {
-                    setOrdersMode(null)
-                    setAdminOpen((open) => !open)
-                  }}
-                  disabled={busy}
-                >
-                  {adminOpen ? 'Ver tienda' : 'Administrar productos'}
-                </button>
-              )}
-              {isAdmin && (
-                <button
-                  type="button"
-                  className="secondary"
-                  aria-pressed={ordersMode === 'admin'}
-                  onClick={() => {
-                    setAdminOpen(false)
-                    setOrdersMode((current) => current === 'admin' ? null : 'admin')
-                  }}
-                  disabled={busy}
-                >
-                  {ordersMode === 'admin' ? 'Ver tienda' : 'Revisar pedidos'}
-                </button>
-              )}
-              <button type="button" className="secondary" onClick={endSession} disabled={busy}>
-                Cerrar sesión
-              </button>
-            </div>
+    <div className="site-shell">
+      <div className="demo-banner">Tienda de demostración · Los pagos se realizan en modo de prueba</div>
+      <header className="site-header">
+        <div className="header-inner">
+          <button type="button" className="brand" onClick={openStore} aria-label="Digital Store, ir a la tienda">
+            <span className="brand-mark" aria-hidden="true">D</span>
+            <span>digital<span className="brand-accent">store.</span></span>
+          </button>
+          <nav className="site-nav" aria-label="Navegación principal">
+            <button type="button" className={showingStore ? 'nav-link active' : 'nav-link'} onClick={openStore} aria-current={showingStore ? 'page' : undefined}>Tienda</button>
+            {authenticated && keycloak.hasRealmRole('CUSTOMER') && (
+              <button type="button" className={ordersMode === 'mine' ? 'nav-link active' : 'nav-link'} onClick={() => { setAdminOpen(false); setOrdersMode('mine') }} aria-current={ordersMode === 'mine' ? 'page' : undefined}>Mis pedidos</button>
+            )}
+            {isAdmin && (
+              <>
+                <button type="button" className={adminOpen ? 'nav-link active' : 'nav-link'} onClick={() => { setOrdersMode(null); setAdminOpen(true) }} aria-current={adminOpen ? 'page' : undefined}>Productos</button>
+                <button type="button" className={ordersMode === 'admin' ? 'nav-link active' : 'nav-link'} onClick={() => { setAdminOpen(false); setOrdersMode('admin') }} aria-current={ordersMode === 'admin' ? 'page' : undefined}>Pedidos</button>
+              </>
+            )}
+          </nav>
+          <div className="header-actions">
+            {authenticated ? (
+              <>
+                <div className="user-chip" title={`Rol: ${role}`}>
+                  <span className="user-avatar" aria-hidden="true">{String(name).charAt(0).toUpperCase()}</span>
+                  <span className="user-chip-text"><strong>{name}</strong><small>{role === 'ADMIN' ? 'Administrador' : 'Mi cuenta'}</small></span>
+                </div>
+                <button type="button" className="header-text-button" onClick={openAccount} disabled={busy}>Mi cuenta</button>
+                <button type="button" className="header-text-button" onClick={endSession} disabled={busy}>Salir</button>
+              </>
+            ) : (
+              <button type="button" className="primary header-login" onClick={startSession} disabled={busy || initializationError}>Iniciar sesión</button>
+            )}
           </div>
-        ) : (
-          <div className="session">
-            <p className="session-label">Todavía no has iniciado sesión.</p>
-            <button type="button" className="primary" onClick={startSession} disabled={busy || initializationError}>
-              Iniciar sesión
-            </button>
-          </div>
-        )}
-      </section>
-
-      {ordersMode && authenticated ? (
-        <OrdersPage key={ordersMode} mode={ordersMode} />
-      ) : isAdmin && adminOpen ? (
-        <AdminProductsPage />
-      ) : (
-        <div className="storefront">
-        {selectedProductId ? (
-          <ProductDetailPage
-            id={selectedProductId}
-            onBack={() => setSelectedProductId(null)}
-            onAdd={addToCart}
-          />
-        ) : (
-          <CatalogPage
-            query={query}
-            page={page}
-            onSearch={searchProducts}
-            onPageChange={setPage}
-            onOpen={setSelectedProductId}
-            onAdd={addToCart}
-          />
-        )}
-
-        <aside className="cart-panel" aria-labelledby="cart-title">
-          <div className="cart-heading">
-            <div>
-              <span className="eyebrow">Tu selección</span>
-              <h2 id="cart-title">Carrito</h2>
-            </div>
-            <span className="cart-count" aria-live="polite">{cart.length}</span>
-          </div>
-
-          {cart.length === 0 ? (
-            <p className="cart-empty">Añade un producto para verlo aquí.</p>
-          ) : (
-            <ul className="cart-items">
-              {cart.map((item) => (
-                <li key={item.id}>
-                  <div>
-                    <strong>{item.title}</strong>
-                    <span>{formatPrice(item)}</span>
-                  </div>
-                  <button
-                    type="button"
-                    className="remove-button"
-                    aria-label={`Quitar ${item.title} del carrito`}
-                    onClick={() => removeFromCart(item.id)}
-                    disabled={creatingOrder}
-                  >
-                    Quitar
-                  </button>
-                </li>
-              ))}
-            </ul>
-          )}
-
-          <p className="cart-note">El precio final se confirmará al crear el pedido.</p>
-          {cart.length > 0 && (
-            <button type="button" className="primary create-order-button" onClick={submitOrder} disabled={creatingOrder}>
-              {creatingOrder ? 'Creando pedido…' : 'Crear pedido'}
-            </button>
-          )}
-          {orderError && <p className="error" role="alert">{orderError}</p>}
-          {orderResult && (
-            <div className="order-confirmation" role="status">
-              <h3>{orderResult.replayed ? 'Pedido recuperado' : 'Pedido creado'}</h3>
-              <p>Número: <strong>{orderResult.order.id}</strong></p>
-              <p>Estado: {orderResult.order.status}</p>
-              <ul>
-                {orderResult.order.items.map((item) => (
-                  <li key={item.productId}>{item.title} — {formatPrice({ price: item.unitPrice, currency: orderResult.order.currency })}</li>
-                ))}
-              </ul>
-              <p>Total: <strong>{formatPrice({ price: orderResult.order.totalAmount, currency: orderResult.order.currency })}</strong></p>
-              <p className="cart-note">El pago se habilitará en una historia posterior.</p>
-              <button
-                type="button"
-                className="secondary"
-                onClick={() => setOrdersMode('mine')}
-              >
-                Ver mis pedidos
-              </button>
-            </div>
-          )}
-        </aside>
         </div>
-      )}
-    </main>
+      </header>
+
+      <main className="page">
+        {error && <p className="error global-error" role="alert">{error}</p>}
+
+        {showingStore ? (
+          <>
+            {!selectedProductId && (
+              <section className="hero" aria-labelledby="page-title">
+                <div className="hero-copy">
+                  <span className="hero-kicker"><span aria-hidden="true">✦</span> Descubre algo nuevo</span>
+                  <h1 id="page-title">Ideas que puedes <em>llevar más lejos.</em></h1>
+                  <p>Encuentra recursos digitales para aprender, crear y avanzar a tu ritmo.</p>
+                  <a className="hero-cta" href="#catalogo">Explorar productos <span aria-hidden="true">↗</span></a>
+                </div>
+                <div className="hero-visual" aria-hidden="true">
+                  <div className="hero-orbit hero-orbit-one" />
+                  <div className="hero-orbit hero-orbit-two" />
+                  <div className="hero-art-card"><img src={heroArt} alt="" /></div>
+                  <div className="hero-float hero-float-top">01 / Explora</div>
+                  <div className="hero-float hero-float-bottom">Digital goods ✳</div>
+                </div>
+              </section>
+            )}
+
+            <div className="storefront" id="catalogo">
+              {selectedProductId ? (
+                <ProductDetailPage id={selectedProductId} onBack={() => setSelectedProductId(null)} onAdd={addToCart} />
+              ) : (
+                <CatalogPage query={query} page={page} onSearch={searchProducts} onPageChange={setPage} onOpen={setSelectedProductId} onAdd={addToCart} />
+              )}
+
+              <aside className="cart-panel" aria-labelledby="cart-title">
+                <div className="cart-heading">
+                  <div><span className="eyebrow">Tu selección</span><h2 id="cart-title">Carrito</h2></div>
+                  <span className="cart-count" aria-live="polite">{cart.length}</span>
+                </div>
+                {cart.length === 0 ? (
+                  <div className="cart-empty-state"><span className="cart-empty-icon" aria-hidden="true">✳</span><strong>Tu carrito está vacío</strong><p>Explora el catálogo y añade algo que te inspire.</p></div>
+                ) : (
+                  <ul className="cart-items">
+                    {cart.map((item) => (
+                      <li key={item.id}>
+                        <div><strong>{item.title}</strong><span>{formatPrice(item)}</span></div>
+                        <button type="button" className="remove-button" aria-label={`Quitar ${item.title} del carrito`} onClick={() => removeFromCart(item.id)} disabled={creatingOrder}>Quitar</button>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+                {cart.length > 0 && (
+                  <>
+                    <div className="cart-total"><span>Total estimado</span><strong>{formatPrice({ price: cart.reduce((total, item) => total + item.price, 0), currency: 'PEN' })}</strong></div>
+                    <p className="cart-note">El precio final se confirma al crear el pedido.</p>
+                    <button type="button" className="primary create-order-button" onClick={submitOrder} disabled={creatingOrder}>{creatingOrder ? 'Creando pedido…' : 'Crear pedido'} <span aria-hidden="true">→</span></button>
+                  </>
+                )}
+                {orderError && <p className="error" role="alert">{orderError}</p>}
+                {orderResult && (
+                  <div className="order-confirmation" role="status">
+                    <span className="confirmation-mark" aria-hidden="true">✓</span>
+                    <h3>{orderResult.replayed ? 'Pedido recuperado' : 'Pedido creado'}</h3>
+                    <p>Número: <strong>{orderResult.order.id}</strong></p>
+                    <p>Total: <strong>{formatPrice({ price: orderResult.order.totalAmount, currency: orderResult.order.currency })}</strong></p>
+                    <p>Continúa al pago desde Mis pedidos.</p>
+                    <button type="button" className="secondary" onClick={() => setOrdersMode('mine')}>Ver mis pedidos</button>
+                  </div>
+                )}
+              </aside>
+            </div>
+          </>
+        ) : (
+          <>
+            <section className="workspace-intro">
+              <span className="eyebrow">{adminOpen || ordersMode === 'admin' ? 'Panel de administración' : 'Tu espacio'}</span>
+              <h1>{adminOpen ? 'Gestiona tu catálogo' : ordersMode === 'admin' ? 'Control de pedidos' : 'Tus compras digitales'}</h1>
+              <p>{adminOpen ? 'Prepara, publica y organiza tus productos.' : ordersMode === 'admin' ? 'Consulta pedidos y revisa los pagos que requieren atención.' : 'Consulta el estado de tus pedidos y continúa tus pagos.'}</p>
+            </section>
+            {ordersMode && authenticated ? <OrdersPage key={ordersMode} mode={ordersMode} /> : isAdmin && adminOpen ? <AdminProductsPage /> : null}
+          </>
+        )}
+      </main>
+      <footer className="site-footer"><span>digitalstore.</span><span>Recursos digitales · Experiencia de demostración</span></footer>
+    </div>
   )
 }
 
