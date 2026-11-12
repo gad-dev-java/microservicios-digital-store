@@ -6,7 +6,6 @@ import { CatalogPage } from './features/catalog/pages/CatalogPage'
 import { ProductDetailPage } from './features/catalog/pages/ProductDetailPage'
 import { createOrder, type CreatedOrder } from './features/orders/api/orders'
 import { OrdersPage } from './features/orders/OrdersPage'
-import heroArt from './assets/hero.png'
 import './App.css'
 
 type AppProps = {
@@ -194,24 +193,6 @@ function App({ initializationError = false }: AppProps) {
 
         {showingStore ? (
           <>
-            {!selectedProductId && (
-              <section className="hero" aria-labelledby="page-title">
-                <div className="hero-copy">
-                  <span className="hero-kicker"><span aria-hidden="true">✦</span> Descubre algo nuevo</span>
-                  <h1 id="page-title">Ideas que puedes <em>llevar más lejos.</em></h1>
-                  <p>Encuentra recursos digitales para aprender, crear y avanzar a tu ritmo.</p>
-                  <a className="hero-cta" href="#catalogo">Explorar productos <span aria-hidden="true">↗</span></a>
-                </div>
-                <div className="hero-visual" aria-hidden="true">
-                  <div className="hero-orbit hero-orbit-one" />
-                  <div className="hero-orbit hero-orbit-two" />
-                  <div className="hero-art-card"><img src={heroArt} alt="" /></div>
-                  <div className="hero-float hero-float-top">01 / Explora</div>
-                  <div className="hero-float hero-float-bottom">Digital goods ✳</div>
-                </div>
-              </section>
-            )}
-
             <div className="storefront" id="catalogo">
               {selectedProductId ? (
                 <ProductDetailPage id={selectedProductId} onBack={() => setSelectedProductId(null)} onAdd={addToCart} />

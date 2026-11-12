@@ -45,7 +45,7 @@ export function ProductDetailPage({ id, onBack, onAdd }: ProductDetailPageProps)
           </div>
           <div className="detail-content">
             <span className="eyebrow">Producto digital</span>
-            <h2 id="detail-title">{product.title}</h2>
+            <h1 id="detail-title">{product.title}</h1>
             <p className="detail-description">{product.description}</p>
             <div className="detail-footer">
               <div><span className="detail-price-label">Precio</span><strong className="detail-price">{formatPrice(product)}</strong></div>

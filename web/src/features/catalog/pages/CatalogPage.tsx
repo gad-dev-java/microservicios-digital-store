@@ -59,7 +59,7 @@ export function CatalogPage({
       <div className="section-heading">
         <div>
           <span className="eyebrow">Colección digital</span>
-          <h2 id="catalog-title">Encuentra tu próximo recurso</h2>
+          <h1 id="catalog-title">Encuentra tu próximo recurso</h1>
         </div>
         {result && !loading && !error && (
           <span className="result-count">{result.totalItems} productos</span>
