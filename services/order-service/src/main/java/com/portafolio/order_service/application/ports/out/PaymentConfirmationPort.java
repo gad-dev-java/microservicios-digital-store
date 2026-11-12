@@ -19,4 +19,8 @@ public interface PaymentConfirmationPort {
     int grantEntitlements(StoreOrder order);
 
     void enqueueOrderPaid(StoreOrder order);
+
+    void markTerminal(Attempt attempt, ProviderOrderSnapshot provider, String terminalStatus);
+
+    void markOrderPaymentFailedIfNoActiveAttempt(UUID orderId);
 }
