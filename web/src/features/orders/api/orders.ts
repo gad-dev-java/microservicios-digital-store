@@ -111,3 +111,36 @@ export async function getMyOrder(id: string): Promise<OrderDetail> {
   const response = await authenticatedFetch(`/api/orders/${encodeURIComponent(id)}`)
   return readOrderResponse<OrderDetail>(response)
 }
+
+export type CheckoutSession = {
+  attemptId: string
+  checkoutUrl: string
+  reused: boolean
+}
+
+export async function openCheckout(orderId: string): Promise<CheckoutSession> {
+  const response = await authenticatedFetch(`/api/orders/${encodeURIComponent(orderId)}/checkout`, {
+    method: 'POST',
+  })
+
+  if (!response.ok) {
+    const problem = await response.json().catch(() => null) as ApiProblem | null
+    const knownError: Record<string, string> = {
+      ORDER_NOT_FOUND: 'Pedido no encontrado.',
+      ORDER_NOT_PAYABLE: 'Este pedido ya no permite iniciar un pago.',
+      PRODUCT_ALREADY_OWNED: 'Ya tienes uno de los productos de este pedido.',
+      PAYMENT_IN_PROGRESS: 'El intento de pago está en curso o requiere revisión. Consulta el estado del pedido.',
+      PAYMENT_PROVIDER_UNAVAILABLE: 'Mercado Pago no está disponible. Consulta el estado del pedido antes de reintentar.',
+    }
+
+    if (response.status === 401) throw new Error('La sesión expiró. Inicia sesión de nuevo.')
+    if (response.status === 403) throw new Error('No tienes permiso para pagar este pedido.')
+    throw new Error(
+      (problem?.code && knownError[problem.code])
+      || problem?.detail
+      || `No se pudo abrir el pago de prueba (HTTP ${response.status}).`,
+    )
+  }
+
+  return await response.json() as CheckoutSession
+}

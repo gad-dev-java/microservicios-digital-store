@@ -515,6 +515,13 @@ h2 {
   margin: 8px 0;
 }
 
+.orders-payment-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 14px;
+}
+
 .orders-detail {
   margin-top: 24px;
 }
