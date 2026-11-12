@@ -152,4 +152,45 @@ public class JdbcPaymentConfirmationAdapter implements PaymentConfirmationPort {
                 ON CONFLICT (order_id, event_type) DO NOTHING
                 """, eventId, order.id(), eventId, order.id(), order.buyerSub(), order.buyerEmail(), order.id());
     }
+
+    @Override
+    public void markTerminal(Attempt attempt, ProviderOrderSnapshot provider, String terminalStatus) {
+        if (!"REJECTED".equals(terminalStatus) && !"EXPIRED".equals(terminalStatus)) {
+            throw new IllegalArgumentException("Estado terminal no permitido: " + terminalStatus);
+        }
+
+        int updated = jdbc.update(
+                """
+            UPDATE payment_attempts
+            SET status = ?,
+                provider_order_id = COALESCE(provider_order_id, ?),
+                provider_status = ?,
+                provider_status_detail = ?,
+                review_reason = NULL
+            WHERE id = ?
+              AND status <> 'APPROVED'
+            """, terminalStatus, provider.id(), provider.status(), provider.statusDetail(), attempt.id());
+
+        if (updated != 1) {
+            throw new IllegalStateException("El intento cambió durante la confirmación");
+        }
+    }
+
+    @Override
+    public void markOrderPaymentFailedIfNoActiveAttempt(UUID orderId) {
+        jdbc.update("""
+            UPDATE orders AS o
+            SET status = 'PAYMENT_FAILED'
+            WHERE o.id = ?
+              AND o.status = 'PENDING_PAYMENT'
+              AND NOT EXISTS (
+                  SELECT 1
+                  FROM payment_attempts AS active
+                  WHERE active.order_id = o.id
+                    AND active.status IN (
+                        'CREATING', 'PENDING', 'REVIEW_REQUIRED'
+                    )
+              )
+            """, orderId);
+    }
 }

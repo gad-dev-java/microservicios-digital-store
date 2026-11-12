@@ -56,21 +56,33 @@ public class PaymentConfirmationService {
             return;
         }
 
+        // Una discrepancia previa sigue bloqueada hasta su revisión.
+        // UNRESOLVED_TIMEOUT puede resolverse con un estado definitivo del proveedor.
+        if ("REVIEW_REQUIRED".equals(attempt.status()) && !"UNRESOLVED_TIMEOUT".equals(attempt.reviewReason())) {
+            receipts.markProcessed(notificationId);
+            return;
+        }
+
         if (!"processed".equals(provider.status())) {
-            // HU-10 traducirá estados rechazados y expirados.
-            store.updateProviderStatus(attempt, provider);
+            String terminalStatus = terminalStatus(provider);
+
+            if (terminalStatus != null) {
+                store.markTerminal(attempt, provider, terminalStatus);
+
+                if ("REJECTED".equals(terminalStatus)) {
+                    store.markOrderPaymentFailedIfNoActiveAttempt(order.id());
+                }
+            } else {
+                // created, processing y action_required todavía no son definitivos.
+                store.updateProviderStatus(attempt, provider);
+            }
+
             receipts.markProcessed(notificationId);
             return;
         }
 
         if (provider.totalPaidAmount() == null || provider.totalPaidAmount().compareTo(order.totalAmount()) != 0) {
             store.markReview(attempt, provider, "AMOUNT_MISMATCH");
-            receipts.markProcessed(notificationId);
-            return;
-        }
-
-        // Una discrepancia anterior requiere resolución administrativa (HU-12).
-        if ("REVIEW_REQUIRED".equals(attempt.status()) && !"UNRESOLVED_TIMEOUT".equals(attempt.reviewReason())) {
             receipts.markProcessed(notificationId);
             return;
         }
@@ -114,6 +126,23 @@ public class PaymentConfirmationService {
                 || (provider.liveMode() != null && provider.liveMode() != expectedLiveMode)) {
             return "LIVE_MODE_MISMATCH";
         }
+        return null;
+    }
+
+    private String terminalStatus(ProviderOrderSnapshot provider) {
+        String status = provider.status();
+        String detail = provider.statusDetail();
+
+        if ("expired".equals(status)
+                || "canceled".equals(status)
+                || ("failed".equals(status) && "expired".equals(detail))) {
+            return "EXPIRED";
+        }
+
+        if ("failed".equals(status)) {
+            return "REJECTED";
+        }
+
         return null;
     }
 }

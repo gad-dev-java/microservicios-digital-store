@@ -32,6 +32,8 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.mockito.ArgumentCaptor;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -282,6 +284,43 @@ class CheckoutOrderIT {
 
         assertAttemptCount(orderId, 1);
         verify(paymentGateway, times(1)).create(any(Attempt.class));
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"REJECTED", "EXPIRED", "ERROR"})
+    void terminalAttemptAllowsNewCheckout(String previousStatus) throws Exception {
+        UUID orderId = seedOrder();
+        String orderStatus = "REJECTED".equals(previousStatus) ? "PAYMENT_FAILED" : "PENDING_PAYMENT";
+
+        jdbc.update("UPDATE orders SET status = ? WHERE id = ?", orderStatus, orderId);
+
+        UUID previousAttemptId = UUID.randomUUID();
+        jdbc.update("""
+            INSERT INTO payment_attempts
+                (id, order_id, provider_idempotency_key,
+                 amount, currency, status)
+            VALUES (?, ?, ?, 39.90, 'PEN', ?)
+            """, previousAttemptId, orderId, UUID.randomUUID(), previousStatus);
+
+        when(paymentGateway.create(any(Attempt.class))).thenReturn(providerResult());
+
+        mvc.perform(post("/api/orders/{id}/checkout", orderId).with(customer(BUYER)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.reused").value(false));
+
+        assertAttemptCount(orderId, 2);
+        assertEquals(
+                previousStatus,
+                jdbc.queryForObject(
+                        "SELECT status FROM payment_attempts WHERE id = ?", String.class, previousAttemptId));
+        assertEquals(1, jdbc.queryForObject("""
+                    SELECT count(*)
+                    FROM payment_attempts
+                    WHERE order_id = ?
+                      AND status IN (
+                          'CREATING', 'PENDING', 'REVIEW_REQUIRED'
+                      )
+                    """, Integer.class, orderId));
     }
 
     private UUID seedOrder() {

@@ -216,6 +216,54 @@ class PaymentConfirmationIT {
         assertEquals(2, count("SELECT count(*) FROM outbox_events"));
     }
 
+    @Test
+    void rejectedPaymentAllowsRetryWithoutGrantingAccess() {
+        Seed seed = seedOrder(BUYER, "PENDING_PAYMENT", "PENDING", UUID.randomUUID());
+        stubProvider(seed, snapshotWithStatus(seed, "failed", "rejected_by_issuer"));
+
+        notifyProvider(seed, false);
+
+        assertTables(seed, "PAYMENT_FAILED", false, "REJECTED", null, 0, 0);
+    }
+
+    @Test
+    void expiredPaymentLeavesOrderReadyForRetry() {
+        Seed seed = seedOrder(BUYER, "PENDING_PAYMENT", "PENDING", UUID.randomUUID());
+        stubProvider(seed, snapshotWithStatus(seed, "canceled", "expired"));
+
+        notifyProvider(seed, false);
+
+        assertTables(seed, "PENDING_PAYMENT", false, "EXPIRED", null, 0, 0);
+    }
+
+    @Test
+    void processingPaymentRemainsActive() {
+        Seed seed = seedOrder(BUYER, "PENDING_PAYMENT", "PENDING", UUID.randomUUID());
+        stubProvider(seed, snapshotWithStatus(seed, "processing", "in_process"));
+
+        notifyProvider(seed, false);
+
+        assertTables(seed, "PENDING_PAYMENT", false, "PENDING", null, 0, 0);
+    }
+
+    @Test
+    void oldRejectedWebhookDoesNotFailNewActiveAttempt() {
+        Seed oldAttempt = seedOrder(BUYER, "PENDING_PAYMENT", "PENDING", UUID.randomUUID());
+
+        // Simula que el intento viejo ya terminó y se inició otro.
+        jdbc.update("UPDATE payment_attempts SET status = 'REJECTED' WHERE id = ?", oldAttempt.attemptId());
+        Seed newAttempt = seedAttempt(oldAttempt);
+
+        stubProvider(oldAttempt, snapshotWithStatus(oldAttempt, "failed", "rejected_by_issuer"));
+        notifyProvider(oldAttempt, false);
+
+        assertTables(oldAttempt, "PENDING_PAYMENT", false, "REJECTED", null, 0, 0);
+        assertEquals(
+                "PENDING",
+                jdbc.queryForObject(
+                        "SELECT status FROM payment_attempts WHERE id = ?", String.class, newAttempt.attemptId()));
+    }
+
     private Seed seedOrder(String buyerSub, String orderStatus, String attemptStatus, UUID... products) {
         UUID orderId = UUID.randomUUID();
         BigDecimal total = UNIT_PRICE.multiply(BigDecimal.valueOf(products.length));
@@ -289,6 +337,21 @@ class PaymentConfirmationIT {
     private void notifyProvider(Seed seed, Boolean notificationLiveMode) {
         webhook.process(
                 UUID.randomUUID().toString(), seed.providerOrderId(), "order.processed", "{}", notificationLiveMode);
+    }
+
+    private ProviderOrderSnapshot snapshotWithStatus(Seed seed, String status, String detail) {
+        ProviderOrderSnapshot valid = validSnapshot(seed);
+
+        return new ProviderOrderSnapshot(
+                valid.id(),
+                valid.externalReference(),
+                valid.totalAmount(),
+                valid.totalPaidAmount(),
+                valid.currency(),
+                status,
+                detail,
+                valid.liveMode(),
+                valid.applicationId());
     }
 
     private void assertTables(
