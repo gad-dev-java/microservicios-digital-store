@@ -526,6 +526,62 @@ h2 {
   margin-top: 24px;
 }
 
+.payment-review-panel {
+  margin-top: 18px;
+  padding: 18px;
+  border: 1px solid #d5dfed;
+  border-radius: 12px;
+  background: #f8faff;
+  overflow-wrap: anywhere;
+}
+
+.payment-review-panel h3 {
+  margin-top: 0;
+}
+
+.payment-review-list {
+  display: grid;
+  gap: 12px;
+  padding-left: 24px;
+}
+
+.payment-review-item {
+  padding: 14px;
+  border: 1px solid #d5dfed;
+  border-radius: 10px;
+  background: #fff;
+}
+
+.payment-review-form {
+  display: grid;
+  gap: 12px;
+  margin-top: 16px;
+}
+
+.payment-review-form label:not(.payment-review-confirmation) {
+  display: grid;
+  gap: 6px;
+  font-weight: 600;
+}
+
+.payment-review-form textarea {
+  width: 100%;
+  padding: 10px;
+  border: 1px solid #bcc9e0;
+  border-radius: 10px;
+  font: inherit;
+}
+
+.payment-review-confirmation {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+}
+
+.payment-review-confirmation input {
+  margin-top: 4px;
+}
+
 @media (max-width: 760px) {
   .storefront {
     grid-template-columns: 1fr;
