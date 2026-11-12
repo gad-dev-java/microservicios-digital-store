@@ -60,3 +60,54 @@ export async function createOrder(productIds: string[], idempotencyKey: string):
     replayed: response.status === 200,
   }
 }
+
+export type OrderSummary = {
+  id: string
+  buyerEmail: string
+  status: string
+  totalAmount: number
+  currency: 'PEN'
+  createdAt: string
+  paidAt: string | null
+  paymentStatus: string | null
+  reviewReason: string | null
+}
+
+export type OrderPage = {
+  items: OrderSummary[]
+  page: number
+  size: number
+  totalItems: number
+  totalPages: number
+}
+
+export type OrderDetail = {
+  order: OrderSummary
+  items: OrderItem[]
+}
+
+async function readOrderResponse<T>(response: Response): Promise<T> {
+  if (!response.ok) {
+    if (response.status === 401) throw new Error('La sesión expiró. Inicia sesión de nuevo.')
+    if (response.status === 403) throw new Error('No tienes permiso para consultar estos pedidos.')
+    if (response.status === 404) throw new Error('Pedido no encontrado.')
+    throw new Error(`No se pudieron consultar los pedidos (HTTP ${response.status}).`)
+  }
+
+  return await response.json() as T
+}
+
+export async function listOrders(
+  mode: 'mine' | 'admin',
+  page: number,
+  signal?: AbortSignal,
+): Promise<OrderPage> {
+  const path = mode === 'mine' ? '/api/orders/me' : '/api/admin/orders'
+  const response = await authenticatedFetch(`${path}?page=${page}&size=20`, { signal })
+  return readOrderResponse<OrderPage>(response)
+}
+
+export async function getMyOrder(id: string): Promise<OrderDetail> {
+  const response = await authenticatedFetch(`/api/orders/${encodeURIComponent(id)}`)
+  return readOrderResponse<OrderDetail>(response)
+}

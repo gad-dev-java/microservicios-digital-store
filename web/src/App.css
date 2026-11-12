@@ -481,6 +481,44 @@ h2 {
   font-size: 0.85rem;
 }
 
+.orders-heading,
+.orders-item-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.orders-heading {
+  margin-bottom: 20px;
+}
+
+.orders-list {
+  display: grid;
+  gap: 16px;
+  padding: 0;
+  list-style: none;
+}
+
+.orders-list-item {
+  padding: 18px;
+  border: 1px solid #e0e5ee;
+  border-radius: 12px;
+}
+
+.orders-list-item strong,
+.orders-detail {
+  overflow-wrap: anywhere;
+}
+
+.orders-list-item p {
+  margin: 8px 0;
+}
+
+.orders-detail {
+  margin-top: 24px;
+}
+
 @media (max-width: 760px) {
   .storefront {
     grid-template-columns: 1fr;
@@ -498,6 +536,12 @@ h2 {
 
   .admin-product {
     align-items: stretch;
+    flex-direction: column;
+  }
+
+  .orders-heading,
+  .orders-item-heading {
+    align-items: flex-start;
     flex-direction: column;
   }
 }
