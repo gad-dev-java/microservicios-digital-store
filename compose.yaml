@@ -175,6 +175,7 @@ services:
       DB_PASSWORD_POSTGRES: ${POSTGRES_PASSWORD:?Define POSTGRES_PASSWORD en .env}
       KEYCLOAK_JWKS_URI: http://keycloak:8080/realms/digital-store/protocol/openid-connect/certs
       ORDER_SERVICE_CLIENT_SECRET: ${ORDER_SERVICE_CLIENT_SECRET:?Define ORDER_SERVICE_CLIENT_SECRET en .env}
+      KEYCLOAK_TOKEN_URI: http://keycloak:8080/realms/digital-store/protocol/openid-connect/token
     depends_on:
       postgres:
         condition: service_healthy

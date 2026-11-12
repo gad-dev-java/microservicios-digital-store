@@ -298,6 +298,33 @@ h2 {
   line-height: 1.5;
 }
 
+.create-order-button {
+  width: 100%;
+  margin-top: 20px;
+}
+
+.order-confirmation {
+  margin-top: 20px;
+  padding: 16px;
+  border: 1px solid #b8ddc5;
+  border-radius: 10px;
+  background: #eaf7ee;
+  color: #1f6838;
+  overflow-wrap: anywhere;
+}
+
+.order-confirmation h3 {
+  margin: 0 0 12px;
+}
+
+.order-confirmation p {
+  margin: 8px 0;
+}
+
+.order-confirmation ul {
+  padding-left: 20px;
+}
+
 .detail-panel .eyebrow {
   display: block;
   margin-top: 36px;
