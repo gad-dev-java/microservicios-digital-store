@@ -17,4 +17,6 @@ public interface ManageProductsUseCase {
     Product publish(UUID id);
 
     Product archive(UUID id);
+
+    Product updateDetails(UUID id, String title, String description, BigDecimal price);
 }

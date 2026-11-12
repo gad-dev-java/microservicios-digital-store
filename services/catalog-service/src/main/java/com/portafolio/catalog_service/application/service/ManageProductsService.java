@@ -4,10 +4,12 @@ import com.portafolio.catalog_service.application.ports.in.ManageProductsUseCase
 import com.portafolio.catalog_service.application.ports.in.ProductPage;
 import com.portafolio.catalog_service.application.ports.out.AssetStoragePort;
 import com.portafolio.catalog_service.application.ports.out.ProductRepositoryPort;
+import com.portafolio.catalog_service.application.ports.out.PublicCatalogCachePort;
 import com.portafolio.catalog_service.domain.exceptions.InvalidProductStateException;
 import com.portafolio.catalog_service.domain.exceptions.ProductNotFoundException;
 import com.portafolio.catalog_service.domain.models.AssetMetadata;
 import com.portafolio.catalog_service.domain.models.Product;
+import com.portafolio.catalog_service.domain.models.ProductStatus;
 import java.io.InputStream;
 import java.math.BigDecimal;
 import java.util.UUID;
@@ -23,6 +25,7 @@ import org.springframework.transaction.support.TransactionSynchronizationManager
 public class ManageProductsService implements ManageProductsUseCase {
     private final ProductRepositoryPort products;
     private final AssetStoragePort files;
+    private final PublicCatalogCachePort publicCache;
 
     @Transactional(readOnly = true)
     @Override
@@ -38,7 +41,10 @@ public class ManageProductsService implements ManageProductsUseCase {
 
     @Override
     public Product createDraft(String sku, String title, String description, BigDecimal price) {
-        return products.save(Product.draft(sku, title, description, price));
+        Product draftToSave = Product.draft(sku, title, description, price);
+        Product savedDraft = products.save(draftToSave);
+        invalidateAfterCommit();
+        return savedDraft;
     }
 
     @Override
@@ -49,7 +55,7 @@ public class ManageProductsService implements ManageProductsUseCase {
         }
 
         // Valida el estado antes de escribir en disco.
-        if (product.status() != com.portafolio.catalog_service.domain.models.ProductStatus.DRAFT) {
+        if (product.status() != ProductStatus.DRAFT) {
             throw new InvalidProductStateException("Solo un borrador admite un archivo");
         }
 
@@ -63,7 +69,10 @@ public class ManageProductsService implements ManageProductsUseCase {
             }
         });
 
-        return products.save(product.withFile(stored));
+        Product productToUpload = product.withFile(stored);
+        Product saved = products.save(productToUpload);
+        invalidateAfterCommit();
+        return saved;
     }
 
     @Override
@@ -73,11 +82,31 @@ public class ManageProductsService implements ManageProductsUseCase {
         if (!files.matches(published.file())) {
             throw new InvalidProductStateException("El archivo almacenado falta o no coincide con sus metadatos");
         }
-        return products.save(published);
+        Product saved = products.save(published);
+        invalidateAfterCommit();
+        return saved;
     }
 
     @Override
     public Product archive(UUID id) {
-        return products.save(get(id).archive());
+        Product saved = products.save(get(id).archive());
+        invalidateAfterCommit();
+        return saved;
+    }
+
+    @Override
+    public Product updateDetails(UUID id, String title, String description, BigDecimal price) {
+        Product saved = products.save(get(id).updateDetails(title, description, price));
+        invalidateAfterCommit();
+        return saved;
+    }
+
+    private void invalidateAfterCommit() {
+        TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+            @Override
+            public void afterCommit() {
+                publicCache.invalidate();
+            }
+        });
     }
 }
