@@ -18,7 +18,7 @@ spring:
             - id: orders
               uri: lb://order-service
               predicates:
-                - Path=/api/orders,/api/orders/**,/api/admin/orders,/api/admin/orders/**
+                - Path=/api/orders,/api/orders/**,/api/admin/orders,/api/admin/orders/**,/api/admin/payment-attempts/**
             - id: mercado-pago-webhook
               uri: lb://order-service
               predicates:

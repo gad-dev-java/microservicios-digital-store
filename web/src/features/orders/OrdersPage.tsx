@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { formatPrice } from '../catalog/api/products'
+import { AdminPaymentReviewPanel } from './AdminPaymentReviewPanel'
 import { getMyOrder, listOrders, openCheckout, type OrderDetail, type OrderPage, type OrderSummary } from './api/orders'
 
 type OrdersPageProps = {
@@ -53,6 +54,7 @@ export function OrdersPage({ mode }: OrdersPageProps) {
   const [loading, setLoading] = useState(true)
   const [detailLoading, setDetailLoading] = useState(false)
   const [checkoutOrderId, setCheckoutOrderId] = useState<string | null>(null)
+  const [reviewOrderId, setReviewOrderId] = useState<string | null>(null)
   const submittingCheckout = useRef(false)
 
   useEffect(() => {
@@ -79,7 +81,16 @@ export function OrdersPage({ mode }: OrdersPageProps) {
     setError(null)
     setCheckoutError(null)
     setDetail(null)
+    setReviewOrderId(null)
     setPage(nextPage)
+  }
+
+  function refreshOrders() {
+    void listOrders(mode, page)
+      .then((data) => setResult(data))
+      .catch((cause: unknown) => {
+        setError(cause instanceof Error ? cause.message : 'No se pudieron actualizar los pedidos.')
+      })
   }
 
   async function openDetail(id: string) {
@@ -149,7 +160,9 @@ export function OrdersPage({ mode }: OrdersPageProps) {
               <p>Pago: {order.paymentStatus
                 ? paymentStates[order.paymentStatus] ?? order.paymentStatus
                 : 'Aún sin intento'}</p>
-              {order.reviewReason && <p>Motivo de revisión: {order.reviewReason}</p>}
+              {order.paymentStatus === 'REVIEW_REQUIRED' && order.reviewReason && (
+                <p>Motivo de revisión: {order.reviewReason}</p>
+              )}
               <p>Total: <strong>{formatPrice({
                 price: order.totalAmount,
                 currency: order.currency,
@@ -179,6 +192,21 @@ export function OrdersPage({ mode }: OrdersPageProps) {
                     </button>
                   )}
                 </div>
+              )}
+              {mode === 'admin' && (
+                <div className="orders-payment-actions">
+                  <button
+                    type="button"
+                    className="secondary"
+                    aria-expanded={reviewOrderId === order.id}
+                    onClick={() => setReviewOrderId((current) => current === order.id ? null : order.id)}
+                  >
+                    {reviewOrderId === order.id ? 'Ocultar intentos' : 'Ver intentos'}
+                  </button>
+                </div>
+              )}
+              {mode === 'admin' && reviewOrderId === order.id && (
+                <AdminPaymentReviewPanel orderId={order.id} onUpdated={refreshOrders} />
               )}
               {mode === 'mine' && order.paymentStatus === 'CREATING' && (
                 <p>El pago se está preparando. Consulta el estado antes de volver a intentarlo.</p>
@@ -222,7 +250,9 @@ export function OrdersPage({ mode }: OrdersPageProps) {
             ? paymentStates[detail.order.paymentStatus] ?? detail.order.paymentStatus
             : 'Aún sin intento'}</p>
           {detail.order.paidAt && <p>Pagado: {formatDate(detail.order.paidAt)}</p>}
-          {detail.order.reviewReason && <p>Motivo de revisión: {detail.order.reviewReason}</p>}
+          {detail.order.paymentStatus === 'REVIEW_REQUIRED' && detail.order.reviewReason && (
+            <p>Motivo de revisión: {detail.order.reviewReason}</p>
+          )}
           <ul>
             {detail.items.map((item) => (
               <li key={item.productId}>
