@@ -12,6 +12,12 @@ spring:
   cloud:
     config:
       enabled: false
+  security:
+    oauth2:
+      client:
+        registration:
+          order-catalog:
+            client-secret: test-secret
 eureka:
   client:
     enabled: false

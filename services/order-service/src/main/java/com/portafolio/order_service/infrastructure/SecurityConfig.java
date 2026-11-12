@@ -1,4 +1,4 @@
-package com.portafolio.order_service.infrastructure.config;
+package com.portafolio.order_service.infrastructure;
 
 import jakarta.servlet.DispatcherType;
 import org.springframework.context.annotation.Bean;

@@ -23,3 +23,18 @@ spring:
         jwt:
           issuer-uri: http://localhost:8081/realms/digital-store
           jwk-set-uri: ${KEYCLOAK_JWKS_URI:http://localhost:8081/realms/digital-store/protocol/openid-connect/certs}
+      client:
+        registration:
+          order-catalog:
+            provider: keycloak-internal
+            client-id: order-service-client
+            client-secret: ${ORDER_SERVICE_CLIENT_SECRET}
+            client-authentication-method: client_secret_basic
+            authorization-grant-type: client_credentials
+        provider:
+          keycloak-internal:
+            token-uri: ${KEYCLOAK_TOKEN_URI:http://localhost:8081/realms/digital-store/protocol/openid-connect/token}
+  http:
+    clients:
+      connect-timeout: 500ms
+      read-timeout: 2s

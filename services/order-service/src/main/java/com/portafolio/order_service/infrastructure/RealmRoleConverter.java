@@ -1,4 +1,4 @@
-package com.portafolio.order_service.infrastructure.config;
+package com.portafolio.order_service.infrastructure;
 
 import java.util.ArrayList;
 import java.util.Collection;
