@@ -98,6 +98,31 @@ public class MercadoPagoAdapter implements PaymentGatewayPort {
         }
     }
 
+    @Override
+    public void verifyOrderExists(String providerOrderId) {
+        requireConfigured();
+
+        try {
+            Map<?, ?> response = breaker.executeSupplier(() -> client.get()
+                    .uri("/v1/orders/{id}", providerOrderId)
+                    .header("Authorization", "Bearer " + accessToken)
+                    .retrieve()
+                    .body(Map.class));
+
+            if (response == null || !providerOrderId.equals(string(response, "id"))) {
+                throw unavailable();
+            }
+        } catch (OrderException exception) {
+            throw exception;
+        } catch (RuntimeException exception) {
+            log.warn(
+                    "No se pudo consultar la orden de Mercado Pago: tipo={}, providerOrderId={}",
+                    exception.getClass().getSimpleName(),
+                    providerOrderId);
+            throw unavailable();
+        }
+    }
+
     private ProviderResult validateResponse(Map<?, ?> response, Attempt attempt) {
         if (response == null) throw unavailable();
 

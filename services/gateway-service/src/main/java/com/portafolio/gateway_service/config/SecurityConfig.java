@@ -32,6 +32,8 @@ public class SecurityConfig {
                         .permitAll()
                         .pathMatchers("/api/admin/**")
                         .hasRole("ADMIN")
+                        .pathMatchers("/api/webhooks/mercadopago")
+                        .permitAll()
                         .pathMatchers("/api/orders", "/api/orders/**")
                         .hasRole("CUSTOMER")
                         .anyExchange()

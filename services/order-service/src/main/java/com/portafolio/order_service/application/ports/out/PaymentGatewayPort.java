@@ -7,4 +7,6 @@ public interface PaymentGatewayPort {
     void requireConfigured();
 
     ProviderResult create(Attempt attempt);
+
+    void verifyOrderExists(String providerOrderId);
 }
