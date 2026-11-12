@@ -64,4 +64,10 @@ public class AdminProductController {
     public AdminProductResponse archive(@PathVariable UUID id) {
         return AdminProductResponse.from(products.archive(id));
     }
+
+    @PutMapping("/{id}")
+    public AdminProductResponse update(@PathVariable UUID id, @Valid @RequestBody UpdateProductRequest request) {
+        return AdminProductResponse.from(
+                products.updateDetails(id, request.title(), request.description(), request.price()));
+    }
 }

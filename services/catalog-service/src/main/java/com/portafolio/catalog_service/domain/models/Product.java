@@ -66,4 +66,14 @@ public record Product(
         }
         return new Product(id, sku, title, description, price, currency, ProductStatus.ARCHIVED, file);
     }
+
+    public Product updateDetails(String title, String description, BigDecimal price) {
+        if (status == ProductStatus.ARCHIVED) {
+            throw new InvalidProductStateException("No se puede editar un producto archivado");
+        }
+
+        Product validated = Product.draft(sku, title, description, price);
+        return new Product(
+                id, sku, validated.title(), validated.description(), validated.price(), currency, status, file);
+    }
 }

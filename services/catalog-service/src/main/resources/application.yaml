@@ -28,6 +28,16 @@ spring:
     multipart:
       max-file-size: 50MB
       max-request-size: 51MB
+  data:
+    redis:
+      host: ${REDIS_HOST:localhost}
+      port: 6379
+      connect-timeout: 300ms
+      timeout: 300ms
 catalog:
   storage:
     root: ${CATALOG_STORAGE_PATH:./local-product-files}
+management:
+  health:
+    redis:
+      enabled: false
