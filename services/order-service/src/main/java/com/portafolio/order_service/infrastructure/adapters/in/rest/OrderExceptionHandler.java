@@ -16,7 +16,7 @@ public class OrderExceptionHandler {
         HttpStatus status = switch (exception.reason()) {
             case INVALID_ORDER_REQUEST -> HttpStatus.BAD_REQUEST;
             case EMAIL_NOT_VERIFIED -> HttpStatus.FORBIDDEN;
-            case PRODUCT_NOT_FOUND -> HttpStatus.NOT_FOUND;
+            case PRODUCT_NOT_FOUND, ORDER_NOT_FOUND -> HttpStatus.NOT_FOUND;
             case PRODUCT_ALREADY_OWNED, IDEMPOTENCY_CONFLICT -> HttpStatus.CONFLICT;
             case CATALOG_UNAVAILABLE -> HttpStatus.SERVICE_UNAVAILABLE;
             case IDEMPOTENCY_RACE -> HttpStatus.INTERNAL_SERVER_ERROR;

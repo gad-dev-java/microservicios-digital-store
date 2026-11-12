@@ -5,6 +5,7 @@ import { formatPrice, type ProductSummary } from './features/catalog/api/product
 import { CatalogPage } from './features/catalog/pages/CatalogPage'
 import { ProductDetailPage } from './features/catalog/pages/ProductDetailPage'
 import { createOrder, type CreatedOrder } from './features/orders/api/orders'
+import { OrdersPage } from './features/orders/OrdersPage'
 import './App.css'
 
 type AppProps = {
@@ -22,6 +23,7 @@ function App({ initializationError = false }: AppProps) {
   const [selectedProductId, setSelectedProductId] = useState<string | null>(null)
   const [cart, setCart] = useState<ProductSummary[]>([])
   const [adminOpen, setAdminOpen] = useState(false)
+  const [ordersMode, setOrdersMode] = useState<'mine' | 'admin' | null>(null)
   const [orderResult, setOrderResult] = useState<CreatedOrder | null>(null)
   const [orderError, setOrderError] = useState<string | null>(null)
   const [creatingOrder, setCreatingOrder] = useState(false)
@@ -63,6 +65,7 @@ function App({ initializationError = false }: AppProps) {
     setBusy(true)
     setError(null)
     setAdminOpen(false)
+    setOrdersMode(null)
     try {
       await keycloak.logout({ redirectUri: `${window.location.origin}/` })
     } catch {
@@ -157,14 +160,46 @@ function App({ initializationError = false }: AppProps) {
               <button type="button" className="primary" onClick={openAccount} disabled={busy}>
                 Mi cuenta
               </button>
+              {keycloak.hasRealmRole('CUSTOMER') && (
+                <button
+                  type="button"
+                  className="secondary"
+                  aria-pressed={ordersMode === 'mine'}
+                  onClick={() => {
+                    setAdminOpen(false)
+                    setOrdersMode((current) => current === 'mine' ? null : 'mine')
+                  }}
+                  disabled={busy}
+                >
+                  {ordersMode === 'mine' ? 'Ver tienda' : 'Mis pedidos'}
+                </button>
+              )}
               {isAdmin && (
                 <button
                   type="button"
                   className="secondary"
                   aria-pressed={adminOpen}
-                  onClick={() => setAdminOpen((open) => !open)}
+                  onClick={() => {
+                    setOrdersMode(null)
+                    setAdminOpen((open) => !open)
+                  }}
+                  disabled={busy}
                 >
                   {adminOpen ? 'Ver tienda' : 'Administrar productos'}
+                </button>
+              )}
+              {isAdmin && (
+                <button
+                  type="button"
+                  className="secondary"
+                  aria-pressed={ordersMode === 'admin'}
+                  onClick={() => {
+                    setAdminOpen(false)
+                    setOrdersMode((current) => current === 'admin' ? null : 'admin')
+                  }}
+                  disabled={busy}
+                >
+                  {ordersMode === 'admin' ? 'Ver tienda' : 'Revisar pedidos'}
                 </button>
               )}
               <button type="button" className="secondary" onClick={endSession} disabled={busy}>
@@ -182,7 +217,9 @@ function App({ initializationError = false }: AppProps) {
         )}
       </section>
 
-      {isAdmin && adminOpen ? (
+      {ordersMode && authenticated ? (
+        <OrdersPage key={ordersMode} mode={ordersMode} />
+      ) : isAdmin && adminOpen ? (
         <AdminProductsPage />
       ) : (
         <div className="storefront">
@@ -255,6 +292,13 @@ function App({ initializationError = false }: AppProps) {
               </ul>
               <p>Total: <strong>{formatPrice({ price: orderResult.order.totalAmount, currency: orderResult.order.currency })}</strong></p>
               <p className="cart-note">El pago se habilitará en una historia posterior.</p>
+              <button
+                type="button"
+                className="secondary"
+                onClick={() => setOrdersMode('mine')}
+              >
+                Ver mis pedidos
+              </button>
             </div>
           )}
         </aside>
