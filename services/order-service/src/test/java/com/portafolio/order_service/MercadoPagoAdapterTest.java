@@ -1,6 +1,7 @@
 package com.portafolio.order_service;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.springframework.test.web.client.match.MockRestRequestMatchers.content;
 import static org.springframework.test.web.client.match.MockRestRequestMatchers.header;
 import static org.springframework.test.web.client.match.MockRestRequestMatchers.method;
@@ -13,6 +14,7 @@ import com.portafolio.order_service.domain.models.ProviderResult;
 import com.portafolio.order_service.infrastructure.adapters.out.MercadoPagoAdapter;
 import io.github.resilience4j.circuitbreaker.CircuitBreaker;
 import java.math.BigDecimal;
+import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
@@ -21,6 +23,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.client.MockRestServiceServer;
 import org.springframework.web.client.RestClient;
+import org.springframework.web.util.UriComponentsBuilder;
 
 class MercadoPagoAdapterTest {
     @Test
@@ -90,6 +93,85 @@ class MercadoPagoAdapterTest {
 
         assertEquals("ORDTEST123", result.providerOrderId());
         assertEquals(checkoutUrl, result.checkoutUrl());
+        server.verify();
+    }
+
+    @Test
+    void searchesEveryPageWithoutRestrictingStatus() {
+        UUID reference = UUID.randomUUID();
+        Instant begin = Instant.parse("2026-11-10T00:00:00Z");
+        Instant end = Instant.parse("2026-11-12T00:00:00Z");
+
+        RestClient.Builder builder = RestClient.builder().baseUrl("https://api.mercadopago.com");
+        MockRestServiceServer server = MockRestServiceServer.bindTo(builder).build();
+
+        MercadoPagoAdapter adapter = new MercadoPagoAdapter(
+                builder.build(), CircuitBreaker.ofDefaults("mercadoPago-search-test"), "test-token");
+
+        server.expect(request -> {
+                    assertEquals(HttpMethod.GET, request.getMethod());
+                    assertEquals("/v1/orders", request.getURI().getPath());
+                    var query = UriComponentsBuilder.fromUri(request.getURI())
+                            .build()
+                            .getQueryParams();
+                    assertEquals(reference.toString(), query.getFirst("external_reference"));
+                    assertEquals(begin.toString(), query.getFirst("begin_date"));
+                    assertEquals(end.toString(), query.getFirst("end_date"));
+                    assertEquals("0", query.getFirst("offset"));
+                    assertEquals("20", query.getFirst("limit"));
+                    assertFalse(query.containsKey("status"));
+                })
+                .andRespond(withStatus(HttpStatus.OK)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .body("""
+                            {
+                              "data": [
+                                {
+                                  "id": "UNRELATED",
+                                  "external_reference": "another-reference"
+                                }
+                              ],
+                              "paging": {
+                                "total": 21,
+                                "offset": 0,
+                                "limit": 20
+                              }
+                            }
+                            """));
+
+        server.expect(request -> {
+                    assertEquals(HttpMethod.GET, request.getMethod());
+                    assertEquals("/v1/orders", request.getURI().getPath());
+                    var query = UriComponentsBuilder.fromUri(request.getURI())
+                            .build()
+                            .getQueryParams();
+                    assertEquals(reference.toString(), query.getFirst("external_reference"));
+                    assertEquals("20", query.getFirst("offset"));
+                    assertEquals("20", query.getFirst("limit"));
+                    assertFalse(query.containsKey("status"));
+                })
+                .andRespond(withStatus(HttpStatus.OK)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .body("""
+                            {
+                              "data": [
+                                {
+                                  "id": "ORD-SECOND-PAGE",
+                                  "external_reference": "%s",
+                                  "status": "processed"
+                                }
+                              ],
+                              "paging": {
+                                "total": 21,
+                                "offset": 20,
+                                "limit": 20
+                              }
+                            }
+                            """.formatted(reference)));
+
+        List<String> found = adapter.findOrderIds(reference, begin, end);
+
+        assertEquals(List.of("ORD-SECOND-PAGE"), found);
         server.verify();
     }
 }
