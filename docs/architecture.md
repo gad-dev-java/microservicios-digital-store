@@ -183,7 +183,7 @@ Las claves de almacenamiento se generan con UUID, nunca a partir del nombre subi
 - **Evento `ORDER_PAID` versionado:** `eventId` (el `id` de la fila del outbox), `eventType`, `occurredAt`, `schemaVersion`, `orderId`, `buyerEmail` y los datos necesarios para el correo (importe, moneda y títulos). El contrato JSON se versiona en `docs/contracts/`. En esta versión solo se publica `ORDER_PAID`; `PAYMENT_FAILED` se muestra en la web. `UNIQUE (order_id, event_type)` evita duplicar el evento de un pedido, pero **no** garantiza entrega exactamente una vez en Kafka ni en SMTP.
 - El relay del outbox usa un único trabajador local: reclama con `FOR UPDATE SKIP LOCKED`, publica con `key = order_id` y marca `PUBLISHED`; `lease_until` permite recuperar un reclamo tras una caída. Puede haber duplicados si vence el lease o el proceso cae después de publicar. Tras un máximo de intentos (configurable) la fila pasa a `DEAD` y queda para revisión.
 - **Consumo en Notification Service:** `ErrorHandlingDeserializer` para que un mensaje ilegible no entre en bucle; `AckMode.RECORD`, de modo que el offset se confirma al terminar con éxito el listener. `email_deliveries` tiene `source_message_id` como clave y `UNIQUE (order_id, notification_type)`; el listener inserta con `ON CONFLICT DO NOTHING` y **termina con éxito** ante un duplicado (un duplicado esperado no va al DLT). Los mensajes irrecuperables van a `orders.events.v1.DLT`, aprovisionado junto al tópico principal. Un scheduler envía los correos pendientes con reintentos y, tras el máximo de intentos, los marca `DEAD`. Una caída entre enviar por SMTP y registrar `SENT` todavía puede repetir un correo. [Spring Kafka](https://docs.spring.io/spring-kafka/reference/kafka/receiving-messages/message-listener-container.html).
-- `@Scheduled` en Order Service ejecuta cada día `purge_expired_idempotency_requests(1000)` hasta que devuelva cero. El repositorio puede usar `@Query(value = "SELECT purge_expired_idempotency_requests(:batchSize)", nativeQuery = true)`; es una consulta escalar, sin `@Modifying`. El método programado no abre una transacción para todo el bucle: cada invocación usa `@Transactional(propagation = REQUIRES_NEW, readOnly = false)` para confirmar y soltar bloqueos por lote. [Transacciones de Spring Data JPA](https://docs.spring.io/spring-data/jpa/reference/jpa/transactions.html). El resto de purgas siguen el mismo patrón por lotes.
+- `@Scheduled` en Order Service ejecuta cada día la función `purge_expired_idempotency_requests(1000)` y purga webhooks `PROCESSED` y outbox `PUBLISHED` hasta que cada lote devuelva cero. Notification Service purga correos `SENT` de más de 60 días. Los schedulers no abren una transacción envolvente: cada llamada al adaptador JDBC usa `@Transactional(propagation = REQUIRES_NEW)` para confirmar y soltar bloqueos por lote. [Propagación de transacciones de Spring](https://docs.spring.io/spring-framework/reference/data-access/transaction/declarative/tx-propagation.html).
 
 ### Retención
 
@@ -198,6 +198,24 @@ Las claves de almacenamiento se generan con UUID, nunca a partir del nombre subi
 | Estados pendientes, fallidos, `DEAD` y de revisión | No se purgan                                               | Requieren atención     |
 
 Invariante: la deduplicación (60 días) dura más que el período de republicación manual (30 días), y este más que la retención de Kafka (7 días). Tras una interrupción mayor que 7 días se pueden republicar eventos `PUBLISHED` del outbox con el mismo `eventId`, hasta 30 días de antigüedad; el inbox evita efectos repetidos.
+
+Para republicar manualmente, ejecutar en `orders_db` la siguiente sentencia sustituyendo el UUID. Solo un evento creado durante los últimos 30 días y actualmente `PUBLISHED` puede volver a `PENDING`; usar `created_at` evita que cada republicación reinicie la ventana. Si no devuelve ninguna fila, no se republicó. La fila conserva su `id` (`eventId`) para la deduplicación en Notification Service.
+
+```sql
+UPDATE outbox_events
+SET status = 'PENDING',
+    attempts = 0,
+    next_attempt_at = now(),
+    lease_until = NULL,
+    last_error = NULL,
+    published_at = NULL
+WHERE id = '00000000-0000-0000-0000-000000000000'::uuid
+  AND event_type = 'ORDER_PAID'
+  AND status = 'PUBLISHED'
+  AND created_at >= now() - interval '30 days'
+  AND published_at >= now() - interval '30 days'
+RETURNING id, order_id, status;
+```
 
 ## Límites y despliegue
 

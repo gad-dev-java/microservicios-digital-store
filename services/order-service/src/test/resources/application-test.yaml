@@ -24,3 +24,6 @@ eureka:
 outbox:
   relay:
     enabled: false
+retention:
+  purge:
+    enabled: false
