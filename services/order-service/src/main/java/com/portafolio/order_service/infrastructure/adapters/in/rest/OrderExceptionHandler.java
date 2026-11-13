@@ -16,7 +16,8 @@ public class OrderExceptionHandler {
         HttpStatus status = switch (exception.reason()) {
             case INVALID_ORDER_REQUEST, INVALID_REVIEW_RESOLUTION -> HttpStatus.BAD_REQUEST;
             case EMAIL_NOT_VERIFIED -> HttpStatus.FORBIDDEN;
-            case PRODUCT_NOT_FOUND, ORDER_NOT_FOUND, PAYMENT_ATTEMPT_NOT_FOUND -> HttpStatus.NOT_FOUND;
+            case PRODUCT_NOT_FOUND, ORDER_NOT_FOUND, PAYMENT_ATTEMPT_NOT_FOUND, LIBRARY_ITEM_NOT_FOUND ->
+                HttpStatus.NOT_FOUND;
             case PRODUCT_ALREADY_OWNED,
                     IDEMPOTENCY_CONFLICT,
                     ORDER_NOT_PAYABLE,
@@ -24,6 +25,7 @@ public class OrderExceptionHandler {
                     PAYMENT_REVIEW_CONFLICT -> HttpStatus.CONFLICT;
             case CATALOG_UNAVAILABLE, PAYMENT_PROVIDER_UNAVAILABLE -> HttpStatus.SERVICE_UNAVAILABLE;
             case IDEMPOTENCY_RACE -> HttpStatus.INTERNAL_SERVER_ERROR;
+            case DOWNLOAD_BUSY -> HttpStatus.TOO_MANY_REQUESTS;
         };
 
         ProblemDetail detail = ProblemDetail.forStatusAndDetail(status, exception.getMessage());

@@ -23,6 +23,10 @@ spring:
               uri: lb://order-service
               predicates:
                 - Path=/api/webhooks/mercadopago
+            - id: library
+              uri: lb://order-service
+              predicates:
+                - Path=/api/library,/api/library/**
   security:
     oauth2:
       resourceserver:
