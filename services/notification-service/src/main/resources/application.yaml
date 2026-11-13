@@ -13,7 +13,7 @@ spring:
       ddl-auto: validate
     properties:
       hibernate:
-        show_sql: true
+        show_sql: false
         format_sql: true
   config:
     import: ${SPRING_CONFIG_IMPORT:optional:configserver:http://localhost:8888}
@@ -29,6 +29,7 @@ spring:
         spring.deserializer.value.delegate.class: org.apache.kafka.common.serialization.StringDeserializer
     listener:
       ack-mode: record
+      observation-enabled: true
 
   mail:
     host: ${MAIL_HOST:localhost}

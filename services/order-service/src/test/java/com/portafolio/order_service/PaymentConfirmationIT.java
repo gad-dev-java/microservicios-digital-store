@@ -2,6 +2,7 @@ package com.portafolio.order_service;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.Mockito.reset;
 import static org.mockito.Mockito.when;
@@ -10,6 +11,8 @@ import com.portafolio.order_service.application.ports.in.ProcessWebhookUseCase;
 import com.portafolio.order_service.application.ports.out.CatalogPort;
 import com.portafolio.order_service.application.ports.out.PaymentGatewayPort;
 import com.portafolio.order_service.application.ports.out.ProviderOrderSnapshot;
+import io.micrometer.tracing.Span;
+import io.micrometer.tracing.Tracer;
 import java.math.BigDecimal;
 import java.util.UUID;
 import java.util.concurrent.CountDownLatch;
@@ -21,6 +24,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.micrometer.tracing.test.autoconfigure.AutoConfigureTracing;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.security.oauth2.jwt.JwtDecoder;
@@ -34,6 +38,7 @@ import org.testcontainers.junit.jupiter.Testcontainers;
 import org.testcontainers.postgresql.PostgreSQLContainer;
 
 @SpringBootTest
+@AutoConfigureTracing
 @ActiveProfiles("test")
 @Testcontainers
 @TestPropertySource(properties = {"MERCADOPAGO_APPLICATION_ID=test-app", "MERCADOPAGO_EXPECTED_LIVE_MODE=false"})
@@ -59,6 +64,9 @@ class PaymentConfirmationIT {
 
     @Autowired
     ProcessWebhookUseCase webhook;
+
+    @Autowired
+    Tracer tracer;
 
     @MockitoBean
     PaymentGatewayPort paymentGateway;
@@ -89,6 +97,25 @@ class PaymentConfirmationIT {
         notifyProvider(seed, false);
 
         assertTables(seed, "PAID", true, "APPROVED", null, 2, 1);
+    }
+
+    @Test
+    void confirmedPaymentStoresWebhookTraceInOutbox() {
+        Seed seed = seedOrder(BUYER, "PENDING_PAYMENT", "PENDING", UUID.randomUUID());
+        stubProvider(seed, validSnapshot(seed));
+
+        Span webhookSpan =
+                tracer.spanBuilder().setNoParent().name("test.webhook").start();
+        try (Tracer.SpanInScope ignored = tracer.withSpan(webhookSpan)) {
+            notifyProvider(seed, false);
+        } finally {
+            webhookSpan.end();
+        }
+
+        String traceparent = jdbc.queryForObject(
+                "SELECT traceparent FROM outbox_events WHERE order_id = ?", String.class, seed.orderId());
+        assertNotNull(traceparent);
+        assertEquals(webhookSpan.context().traceId(), traceparent.split("-")[1]);
     }
 
     @Test

@@ -3,10 +3,12 @@ package com.portafolio.order_service.application.service;
 import com.portafolio.order_service.application.ports.out.*;
 import com.portafolio.order_service.domain.exceptions.OrderException;
 import com.portafolio.order_service.domain.models.Reason;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+@Slf4j
 @Service
 public class PaymentConfirmationService {
     private final PaymentConfirmationPort store;
@@ -98,6 +100,7 @@ public class PaymentConfirmationService {
         store.approveAttempt(attempt, provider, granted < order.itemCount() ? "DUPLICATE_PURCHASE" : null);
         store.enqueueOrderPaid(order);
         markReceiptProcessed(notificationId);
+        log.info("Pago confirmado: orderId={}, paymentAttemptId={}", order.id(), attempt.id());
     }
 
     @Transactional

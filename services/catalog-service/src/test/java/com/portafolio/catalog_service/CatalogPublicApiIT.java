@@ -8,6 +8,7 @@ import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.micrometer.tracing.test.autoconfigure.AutoConfigureTracing;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.data.redis.core.RedisCallback;
@@ -26,6 +27,7 @@ import org.testcontainers.postgresql.PostgreSQLContainer;
 import org.testcontainers.utility.DockerImageName;
 
 @SpringBootTest
+@AutoConfigureTracing
 @AutoConfigureMockMvc
 @ActiveProfiles("test")
 @Testcontainers
@@ -109,7 +111,8 @@ class CatalogPublicApiIT {
 
         mvc.perform(get("/api/products").param("size", "51"))
                 .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.code").value("INVALID_CATALOG_QUERY"));
+                .andExpect(jsonPath("$.code").value("INVALID_CATALOG_QUERY"))
+                .andExpect(jsonPath("$.traceId").isNotEmpty());
     }
 
     @Test

@@ -5,6 +5,9 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import com.portafolio.notification_service.application.service.OrderPaidEmailService;
+import io.micrometer.observation.ObservationRegistry;
+import io.micrometer.tracing.Span;
+import io.micrometer.tracing.Tracer;
 import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
@@ -27,6 +30,7 @@ import org.apache.kafka.common.serialization.StringDeserializer;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.micrometer.tracing.test.autoconfigure.AutoConfigureTracing;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.context.TestConfiguration;
 import org.springframework.context.annotation.Bean;
@@ -47,6 +51,7 @@ import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.ObjectMapper;
 
 @SpringBootTest
+@AutoConfigureTracing
 @ActiveProfiles("test")
 @Testcontainers
 @Import(NotificationFlowIT.Topics.class)
@@ -105,11 +110,19 @@ class NotificationFlowIT {
     @Autowired
     ObjectMapper json;
 
+    @Autowired
+    Tracer tracer;
+
+    @Autowired
+    ObservationRegistry observationRegistry;
+
     private final HttpClient http = HttpClient.newHttpClient();
 
     @BeforeEach
     void cleanDatabase() {
         jdbc.update("DELETE FROM email_deliveries");
+        publisher.setObservationRegistry(observationRegistry);
+        publisher.setObservationEnabled(true);
     }
 
     @Test
@@ -172,6 +185,38 @@ class NotificationFlowIT {
         assertEquals(1, deliveryCount(eventId));
         assertEquals(1, mailpitMessages().path("total").asInt());
         assertEquals(TOPIC, firstSend.getRecordMetadata().topic());
+    }
+
+    @Test
+    void kafkaListenerStoresProducerTraceWithDelivery() throws Exception {
+        UUID eventId = UUID.randomUUID();
+        UUID orderId = UUID.randomUUID();
+        String payload = """
+                {
+                  "eventId": "%s",
+                  "eventType": "ORDER_PAID",
+                  "schemaVersion": 1,
+                  "orderId": "%s",
+                  "buyerEmail": "buyer@example.test",
+                  "amount": 12.00,
+                  "currency": "PEN",
+                  "items": [{"title": "Curso de Java"}]
+                }
+                """.formatted(eventId, orderId);
+
+        Span producerSpan =
+                tracer.spanBuilder().setNoParent().name("test.producer").start();
+        try (Tracer.SpanInScope ignored = tracer.withSpan(producerSpan)) {
+            publisher.send(TOPIC, orderId.toString(), payload).get(10, TimeUnit.SECONDS);
+        } finally {
+            producerSpan.end();
+        }
+
+        await(() -> deliveryCount(eventId) == 1);
+        String storedTraceparent = jdbc.queryForObject(
+                "SELECT traceparent FROM email_deliveries WHERE source_message_id = ?", String.class, eventId);
+        assertNotNull(storedTraceparent);
+        assertEquals(producerSpan.context().traceId(), storedTraceparent.split("-")[1]);
     }
 
     private int deliveryCount(UUID eventId) {
