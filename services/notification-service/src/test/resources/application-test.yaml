@@ -22,3 +22,6 @@ app:
   notifications:
     sender:
       enabled: false
+retention:
+  purge:
+    enabled: false

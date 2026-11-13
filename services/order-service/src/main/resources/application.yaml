@@ -61,3 +61,7 @@ outbox:
     lease-seconds: 30
     ack-timeout-seconds: 10
     max-attempts: 5
+retention:
+  purge:
+    enabled: true
+    cron: "0 0 3 * * *"

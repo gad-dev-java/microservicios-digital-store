@@ -44,3 +44,7 @@ app:
       enabled: true
       poll-ms: 5000
       max-attempts: 5
+retention:
+  purge:
+    enabled: true
+    cron: "0 15 3 * * *"
