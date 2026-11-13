@@ -209,6 +209,9 @@ services:
       DB_URL_POSTGRES: jdbc:postgresql://postgres:5432/notifications_db
       DB_USERNAME_POSTGRES: ${POSTGRES_USER:?Define POSTGRES_USER en .env}
       DB_PASSWORD_POSTGRES: ${POSTGRES_PASSWORD:?Define POSTGRES_PASSWORD en .env}
+      KAFKA_BOOTSTRAP_SERVERS: kafka:9092
+      MAIL_HOST: mailpit
+      MAIL_PORT: 1025
     depends_on:
       postgres:
         condition: service_healthy

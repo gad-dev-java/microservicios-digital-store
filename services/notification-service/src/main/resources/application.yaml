@@ -17,3 +17,30 @@ spring:
         format_sql: true
   config:
     import: ${SPRING_CONFIG_IMPORT:optional:configserver:http://localhost:8888}
+  kafka:
+    bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:9094}
+    consumer:
+      group-id: notification-service-v1
+      auto-offset-reset: earliest
+      enable-auto-commit: false
+      key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      value-deserializer: org.springframework.kafka.support.serializer.ErrorHandlingDeserializer
+      properties:
+        spring.deserializer.value.delegate.class: org.apache.kafka.common.serialization.StringDeserializer
+    listener:
+      ack-mode: record
+
+  mail:
+    host: ${MAIL_HOST:localhost}
+    port: ${MAIL_PORT:1025}
+    properties:
+      mail.smtp.connectiontimeout: 5000
+      mail.smtp.timeout: 5000
+      mail.smtp.writetimeout: 5000
+
+app:
+  notifications:
+    sender:
+      enabled: true
+      poll-ms: 5000
+      max-attempts: 5
