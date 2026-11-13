@@ -12,6 +12,13 @@ spring:
   cloud:
     config:
       enabled: false
+  kafka:
+    listener:
+      auto-startup: false
 eureka:
   client:
     enabled: false
+app:
+  notifications:
+    sender:
+      enabled: false
