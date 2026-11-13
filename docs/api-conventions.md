@@ -1,6 +1,6 @@
 # Convenciones de la API HTTP
 
-Estas reglas definen el contrato público inicial de HU-03 y sirven de base para las siguientes historias. La entrada pública pasa por Gateway; cada servicio conserva sus rutas y DTO propios. Los adaptadores REST validan y transforman datos, los casos de uso aplican reglas y el dominio no depende de HTTP, `Pageable` ni entidades JPA. Los contratos OpenAPI versionados se añadirán en `docs/contracts/` durante HT-09.
+Estas reglas definen el contrato público inicial de HU-03 y sirven de base para las siguientes historias. La entrada pública pasa por Gateway; cada servicio conserva sus rutas y DTO propios. Los adaptadores REST validan y transforman datos, los casos de uso aplican reglas y el dominio no depende de HTTP, `Pageable` ni entidades JPA. El contrato OpenAPI de la demo está en [`docs/contracts/http-api-v1.yaml`](contracts/http-api-v1.yaml).
 
 ## Controllers, DTO y mappers
 
@@ -33,7 +33,7 @@ Una búsqueda sin resultados devuelve `200` con `items: []` y `totalItems: 0`; p
 
 ## Estados y errores
 
-Responder `200` en lecturas correctas, `400` para parámetros inválidos y `404` para productos no visibles. Las rutas privadas futuras usan `401` sin autenticación, `403` sin permiso y `503` cuando una dependencia necesaria no esté disponible. Para los endpoints nuevos, adoptar errores `application/problem+json` conforme a RFC 9457, con extensión estable `code` (por ejemplo, `PRODUCT_NOT_FOUND`); HT-08 añadirá `traceId` cuando exista una traza. El detalle no incluye SQL, rutas internas ni datos sensibles.
+Responder `200` en lecturas correctas, `400` para parámetros inválidos y `404` para productos no visibles. Las rutas privadas usan `401` sin autenticación, `403` sin permiso y `503` cuando una dependencia necesaria no esté disponible. Para los endpoints nuevos, adoptar errores `application/problem+json` conforme a RFC 9457, con extensión estable `code` (por ejemplo, `PRODUCT_NOT_FOUND`); HT-08 añadió `traceId` cuando existe una traza. El detalle no incluye SQL, rutas internas ni datos sensibles.
 
 Cada servicio MVC mapea sus errores de negocio en un `@ControllerAdvice` único; centralizar la creación del `ProblemDetail` para compartir el formato con los errores de Spring MVC (`404/405/415`) y los `401/403` de Spring Security, que no pasan por ese advice. Gateway WebFlux necesita su propio tratamiento reactivo. Probar cada ruta de error antes de declarar uniforme el contrato. [Problem Details en Spring MVC](https://docs.spring.io/spring-framework/reference/web/webmvc/mvc-ann-rest-exceptions.html).
 
