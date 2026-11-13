@@ -9,6 +9,7 @@ import com.portafolio.order_service.application.ports.out.CatalogPort;
 import com.portafolio.order_service.application.ports.out.OutboxEvent;
 import com.portafolio.order_service.application.ports.out.OutboxStorePort;
 import com.portafolio.order_service.application.ports.out.PaymentGatewayPort;
+import com.portafolio.order_service.application.ports.out.TraceContextPort;
 import com.portafolio.order_service.application.service.PublishOutboxService;
 import java.nio.charset.StandardCharsets;
 import java.sql.Timestamp;
@@ -22,6 +23,7 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
+import java.util.stream.StreamSupport;
 import org.apache.kafka.clients.admin.AdminClient;
 import org.apache.kafka.clients.admin.AdminClientConfig;
 import org.apache.kafka.clients.admin.NewTopic;
@@ -34,6 +36,7 @@ import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.micrometer.tracing.test.autoconfigure.AutoConfigureTracing;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.security.oauth2.jwt.JwtDecoder;
@@ -49,6 +52,7 @@ import org.testcontainers.postgresql.PostgreSQLContainer;
 import tools.jackson.databind.ObjectMapper;
 
 @SpringBootTest
+@AutoConfigureTracing
 @ActiveProfiles("test")
 @Testcontainers
 @TestPropertySource(
@@ -97,6 +101,9 @@ class OutboxRelayIT {
     PublishOutboxService relay;
 
     @Autowired
+    TraceContextPort traceContext;
+
+    @Autowired
     ObjectMapper objectMapper;
 
     @MockitoBean
@@ -129,6 +136,7 @@ class OutboxRelayIT {
             assertEquals(
                     seed.eventId().toString(),
                     objectMapper.readTree(first.value()).path("eventId").asText());
+            assertNotNull(first.headers().lastHeader("traceparent"));
             assertEquals("PUBLISHED", status(seed.eventId()));
             assertNotNull(jdbc.queryForObject(
                     "SELECT published_at FROM outbox_events WHERE id = ?", Timestamp.class, seed.eventId()));
@@ -151,6 +159,29 @@ class OutboxRelayIT {
             assertEquals(first.value(), repeated.value());
             assertEquals("PUBLISHED", status(seed.eventId()));
             assertEquals(Integer.valueOf(2), attempts(seed.eventId()));
+        }
+    }
+
+    @Test
+    void restoresStoredTraceWhenPublishingToKafka() {
+        Seed seed = seedOutboxEvent();
+        String traceId = "1234567890abcdef1234567890abcdef";
+        String traceparent = "00-" + traceId + "-1234567890abcdef-01";
+        jdbc.update("UPDATE outbox_events SET traceparent = ? WHERE id = ?", traceparent, seed.eventId());
+
+        try (KafkaConsumer<String, String> consumer = consumer()) {
+            consumer.subscribe(List.of(TOPIC));
+            relay.runBatch();
+
+            ConsumerRecord<String, String> published = awaitEvent(consumer, seed.eventId());
+            Header header = published.headers().lastHeader("traceparent");
+            assertNotNull(header);
+            assertEquals(traceId, new String(header.value(), StandardCharsets.UTF_8).split("-")[1]);
+            assertEquals(
+                    1,
+                    StreamSupport.stream(
+                                    published.headers().headers("traceparent").spliterator(), false)
+                            .count());
         }
     }
 
@@ -214,8 +245,8 @@ class OutboxRelayIT {
                 },
                 2, // maxAttempts
                 1, // batchSize
-                30 // leaseSeconds
-                );
+                30, // leaseSeconds
+                traceContext);
 
         failingRelay.runBatch();
 

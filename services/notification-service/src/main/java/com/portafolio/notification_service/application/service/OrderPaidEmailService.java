@@ -4,18 +4,24 @@ import com.portafolio.notification_service.application.ports.in.HandleOrderPaidU
 import com.portafolio.notification_service.application.ports.out.DeliveryRepositoryPort;
 import com.portafolio.notification_service.application.ports.out.MailDeliveryException;
 import com.portafolio.notification_service.application.ports.out.MailSenderPort;
+import com.portafolio.notification_service.application.ports.out.TraceContextPort;
 import com.portafolio.notification_service.domain.models.EmailDelivery;
 import com.portafolio.notification_service.domain.models.OrderPaidEvent;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
+@Slf4j
 @Service
 public class OrderPaidEmailService implements HandleOrderPaidUseCase {
     private final DeliveryRepositoryPort deliveries;
     private final MailSenderPort mailSender;
+    private final TraceContextPort traceContext;
 
-    public OrderPaidEmailService(DeliveryRepositoryPort deliveries, MailSenderPort mailSender) {
+    public OrderPaidEmailService(
+            DeliveryRepositoryPort deliveries, MailSenderPort mailSender, TraceContextPort traceContext) {
         this.deliveries = deliveries;
         this.mailSender = mailSender;
+        this.traceContext = traceContext;
     }
 
     @Override
@@ -44,14 +50,24 @@ public class OrderPaidEmailService implements HandleOrderPaidUseCase {
     }
 
     public void sendNext() {
-        deliveries.claimNext().ifPresent(delivery -> {
-            try {
-                mailSender.send(delivery);
-            } catch (MailDeliveryException exception) {
-                deliveries.markSendFailed(delivery.sourceMessageId(), delivery.attempts());
-                return;
-            }
-            deliveries.markSent(delivery.sourceMessageId(), delivery.attempts());
-        });
+        deliveries
+                .claimNext()
+                .ifPresent(delivery ->
+                        traceContext.runWithParent(delivery.traceparent(), delivery.tracestate(), "email.send", () -> {
+                            try {
+                                mailSender.send(delivery);
+                                deliveries.markSent(delivery.sourceMessageId(), delivery.attempts());
+                                log.info(
+                                        "Correo enviado: deliveryId={}, orderId={}",
+                                        delivery.sourceMessageId(),
+                                        delivery.orderId());
+                            } catch (MailDeliveryException exception) {
+                                deliveries.markSendFailed(delivery.sourceMessageId(), delivery.attempts());
+                                log.warn(
+                                        "Correo pendiente de reintento: deliveryId={}, orderId={}",
+                                        delivery.sourceMessageId(),
+                                        delivery.orderId());
+                            }
+                        }));
     }
 }

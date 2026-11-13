@@ -10,6 +10,11 @@ management:
     web:
       exposure:
         include: health,info
+  tracing:
+    sampling:
+      probability: ${TRACING_SAMPLE_PROBABILITY:1.0}
+    propagation:
+      type: W3C
 
 spring:
   mvc:

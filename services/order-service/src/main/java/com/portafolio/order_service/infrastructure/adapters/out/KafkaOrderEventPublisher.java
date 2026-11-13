@@ -32,8 +32,6 @@ public class KafkaOrderEventPublisher implements OrderEventPublisherPort {
                 new ProducerRecord<>(topic, event.orderId().toString(), event.payload());
 
         addHeader(record, "eventId", event.id().toString());
-        addHeader(record, "traceparent", event.traceparent());
-        addHeader(record, "tracestate", event.tracestate());
 
         try {
             kafka.send(record).get(ackTimeoutSeconds, TimeUnit.SECONDS);

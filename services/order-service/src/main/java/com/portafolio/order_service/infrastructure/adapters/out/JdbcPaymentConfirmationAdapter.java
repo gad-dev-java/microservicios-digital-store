@@ -4,6 +4,8 @@ import com.portafolio.order_service.application.ports.out.Attempt;
 import com.portafolio.order_service.application.ports.out.PaymentConfirmationPort;
 import com.portafolio.order_service.application.ports.out.ProviderOrderSnapshot;
 import com.portafolio.order_service.application.ports.out.StoreOrder;
+import com.portafolio.order_service.application.ports.out.TraceContextPort;
+import com.portafolio.order_service.application.ports.out.TraceHeaders;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -15,6 +17,7 @@ import org.springframework.stereotype.Repository;
 @RequiredArgsConstructor
 public class JdbcPaymentConfirmationAdapter implements PaymentConfirmationPort {
     private final JdbcTemplate jdbc;
+    private final TraceContextPort traceContext;
 
     @Override
     public Optional<Attempt> lockAttempt(String providerOrderId, String externalReference) {
@@ -128,10 +131,11 @@ public class JdbcPaymentConfirmationAdapter implements PaymentConfirmationPort {
 
     @Override
     public void enqueueOrderPaid(StoreOrder order) {
+        TraceHeaders trace = traceContext.currentHeaders();
         UUID eventId = UUID.randomUUID();
         jdbc.update(
                 """
-                        INSERT INTO outbox_events (id, order_id, event_type, payload)
+                        INSERT INTO outbox_events (id, order_id, event_type, payload, traceparent, tracestate)
                         VALUES (
                             ?, ?, 'ORDER_PAID',
                             jsonb_build_object(
@@ -165,7 +169,8 @@ public class JdbcPaymentConfirmationAdapter implements PaymentConfirmationPort {
                                     FROM order_items item
                                     WHERE item.order_id = ?
                                 )
-                            )
+                            ),
+                            ?, ?
                         )
                         ON CONFLICT (order_id, event_type) DO NOTHING
                         """,
@@ -178,7 +183,9 @@ public class JdbcPaymentConfirmationAdapter implements PaymentConfirmationPort {
                 order.totalAmount(),
                 order.currency(),
                 order.id(),
-                order.id());
+                order.id(),
+                trace.traceparent(),
+                trace.tracestate());
     }
 
     @Override

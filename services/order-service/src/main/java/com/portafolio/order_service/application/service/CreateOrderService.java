@@ -16,8 +16,10 @@ import java.security.NoSuchAlgorithmException;
 import java.util.*;
 import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class CreateOrderService implements CreateOrderUseCase {
@@ -66,6 +68,7 @@ public class CreateOrderService implements CreateOrderUseCase {
 
         try {
             persister.persist(order, key, hash);
+            log.info("Pedido creado: orderId={}", order.id());
             return new Result(order, false);
         } catch (OrderException exception) {
             if (exception.reason() != Reason.IDEMPOTENCY_RACE) {

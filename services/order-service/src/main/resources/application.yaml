@@ -13,7 +13,7 @@ spring:
       ddl-auto: validate
     properties:
       hibernate:
-        show_sql: true
+        show_sql: false
         format_sql: true
   config:
     import: ${SPRING_CONFIG_IMPORT:optional:configserver:http://localhost:8888}
@@ -50,6 +50,8 @@ spring:
         max.block.ms: 5000
         request.timeout.ms: 5000
         delivery.timeout.ms: 8000
+    template:
+      observation-enabled: true
 
 outbox:
   relay:
