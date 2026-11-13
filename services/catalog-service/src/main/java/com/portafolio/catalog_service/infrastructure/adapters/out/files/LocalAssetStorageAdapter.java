@@ -116,6 +116,19 @@ public class LocalAssetStorageAdapter implements AssetStoragePort {
         }
     }
 
+    @Override
+    public InputStream open(String key) {
+        Path path = resolve(key);
+        try {
+            if (!Files.isRegularFile(path, LinkOption.NOFOLLOW_LINKS)) {
+                throw new IOException("Archivo no disponible");
+            }
+            return Files.newInputStream(path);
+        } catch (IOException exception) {
+            throw new AssetStorageException("No se pudo abrir el archivo", exception);
+        }
+    }
+
     private Path resolve(String key) {
         Path path = root.resolve(key).normalize();
         if (!path.startsWith(root)) {

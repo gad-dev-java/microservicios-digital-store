@@ -9,4 +9,6 @@ public interface AssetStoragePort {
     boolean matches(AssetMetadata metadata);
 
     void delete(String key);
+
+    InputStream open(String key);
 }

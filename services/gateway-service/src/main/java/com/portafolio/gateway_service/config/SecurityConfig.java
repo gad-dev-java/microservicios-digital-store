@@ -36,6 +36,8 @@ public class SecurityConfig {
                         .permitAll()
                         .pathMatchers("/api/orders", "/api/orders/**")
                         .hasRole("CUSTOMER")
+                        .pathMatchers("/api/library", "/api/library/**")
+                        .hasRole("CUSTOMER")
                         .anyExchange()
                         .denyAll())
                 .oauth2ResourceServer(oauth2 -> oauth2.jwt(jwt ->

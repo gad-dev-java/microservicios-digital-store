@@ -2,6 +2,7 @@ package com.portafolio.order_service.infrastructure;
 
 import io.github.resilience4j.circuitbreaker.CircuitBreaker;
 import io.github.resilience4j.circuitbreaker.CircuitBreakerConfig;
+import java.net.http.HttpClient;
 import java.time.Duration;
 import org.springframework.beans.factory.config.ConfigurableBeanFactory;
 import org.springframework.boot.restclient.autoconfigure.RestClientBuilderConfigurer;
@@ -10,6 +11,7 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Primary;
 import org.springframework.context.annotation.Scope;
+import org.springframework.http.client.JdkClientHttpRequestFactory;
 import org.springframework.security.oauth2.client.AuthorizedClientServiceOAuth2AuthorizedClientManager;
 import org.springframework.security.oauth2.client.OAuth2AuthorizedClientManager;
 import org.springframework.security.oauth2.client.OAuth2AuthorizedClientProviderBuilder;
@@ -76,5 +78,22 @@ public class CatalogClientConfig {
                 .build();
 
         return CircuitBreaker.of("catalog", config);
+    }
+
+    @Bean("catalogDownloadRestClient")
+    RestClient catalogDownloadRestClient(
+            @LoadBalanced RestClient.Builder builder, OAuth2AuthorizedClientManager manager) {
+        var interceptor = new OAuth2ClientHttpRequestInterceptor(manager);
+        interceptor.setPrincipalResolver(new RequestAttributePrincipalResolver());
+
+        var javaClient =
+                HttpClient.newBuilder().connectTimeout(Duration.ofMillis(500)).build();
+        var factory = new JdkClientHttpRequestFactory(javaClient);
+        factory.setReadTimeout(Duration.ofSeconds(60));
+
+        return builder.baseUrl("http://catalog-service")
+                .requestFactory(factory)
+                .requestInterceptor(interceptor)
+                .build();
     }
 }

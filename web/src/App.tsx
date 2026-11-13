@@ -4,6 +4,7 @@ import { AdminProductsPage } from './features/admin/AdminProductsPage'
 import { formatPrice, type ProductSummary } from './features/catalog/api/products'
 import { CatalogPage } from './features/catalog/pages/CatalogPage'
 import { ProductDetailPage } from './features/catalog/pages/ProductDetailPage'
+import { LibraryPage } from './features/library/LibraryPage'
 import { createOrder, type CreatedOrder } from './features/orders/api/orders'
 import { OrdersPage } from './features/orders/OrdersPage'
 import './App.css'
@@ -23,7 +24,7 @@ function App({ initializationError = false }: AppProps) {
   const [selectedProductId, setSelectedProductId] = useState<string | null>(null)
   const [cart, setCart] = useState<ProductSummary[]>([])
   const [adminOpen, setAdminOpen] = useState(false)
-  const [ordersMode, setOrdersMode] = useState<'mine' | 'admin' | null>(null)
+  const [ordersMode, setOrdersMode] = useState<'mine' | 'admin' | 'library' | null>(null)
   const [orderResult, setOrderResult] = useState<CreatedOrder | null>(null)
   const [orderError, setOrderError] = useState<string | null>(null)
   const [creatingOrder, setCreatingOrder] = useState(false)
@@ -162,7 +163,10 @@ function App({ initializationError = false }: AppProps) {
           <nav className="site-nav" aria-label="Navegación principal">
             <button type="button" className={showingStore ? 'nav-link active' : 'nav-link'} onClick={openStore} aria-current={showingStore ? 'page' : undefined}>Tienda</button>
             {authenticated && keycloak.hasRealmRole('CUSTOMER') && (
-              <button type="button" className={ordersMode === 'mine' ? 'nav-link active' : 'nav-link'} onClick={() => { setAdminOpen(false); setOrdersMode('mine') }} aria-current={ordersMode === 'mine' ? 'page' : undefined}>Mis pedidos</button>
+              <>
+                <button type="button" className={ordersMode === 'mine' ? 'nav-link active' : 'nav-link'} onClick={() => { setAdminOpen(false); setOrdersMode('mine') }} aria-current={ordersMode === 'mine' ? 'page' : undefined}>Mis pedidos</button>
+                <button type="button" className={ordersMode === 'library' ? 'nav-link active' : 'nav-link'} onClick={() => { setAdminOpen(false); setOrdersMode('library') }} aria-current={ordersMode === 'library' ? 'page' : undefined}>Mi biblioteca</button>
+              </>
             )}
             {isAdmin && (
               <>
@@ -242,10 +246,16 @@ function App({ initializationError = false }: AppProps) {
           <>
             <section className="workspace-intro">
               <span className="eyebrow">{adminOpen || ordersMode === 'admin' ? 'Panel de administración' : 'Tu espacio'}</span>
-              <h1>{adminOpen ? 'Gestiona tu catálogo' : ordersMode === 'admin' ? 'Control de pedidos' : 'Tus compras digitales'}</h1>
-              <p>{adminOpen ? 'Prepara, publica y organiza tus productos.' : ordersMode === 'admin' ? 'Consulta pedidos y revisa los pagos que requieren atención.' : 'Consulta el estado de tus pedidos y continúa tus pagos.'}</p>
+              <h1>{adminOpen ? 'Gestiona tu catálogo' : ordersMode === 'admin' ? 'Control de pedidos' : ordersMode === 'library' ? 'Tu biblioteca digital' : 'Tus compras digitales'}</h1>
+              <p>{adminOpen ? 'Prepara, publica y organiza tus productos.' : ordersMode === 'admin' ? 'Consulta pedidos y revisa los pagos que requieren atención.' : ordersMode === 'library' ? 'Descarga los recursos que ya adquiriste.' : 'Consulta el estado de tus pedidos y continúa tus pagos.'}</p>
             </section>
-            {ordersMode && authenticated ? <OrdersPage key={ordersMode} mode={ordersMode} /> : isAdmin && adminOpen ? <AdminProductsPage /> : null}
+            {ordersMode === 'library' && authenticated
+              ? <LibraryPage />
+              : (ordersMode === 'mine' || ordersMode === 'admin') && authenticated
+                ? <OrdersPage key={ordersMode} mode={ordersMode} />
+                : isAdmin && adminOpen
+                  ? <AdminProductsPage />
+                  : null}
           </>
         )}
       </main>

@@ -87,6 +87,32 @@ class GatewaySecurityTest {
                 .isOk();
     }
 
+    @Test
+    void libraryRequiresCustomerAndInternalDownloadRemainsBlocked() {
+        web.get().uri("/api/library/test").exchange().expectStatus().isUnauthorized();
+
+        web.get()
+                .uri("/api/library/test")
+                .header(HttpHeaders.AUTHORIZATION, "Bearer service")
+                .exchange()
+                .expectStatus()
+                .isForbidden();
+
+        web.get()
+                .uri("/api/library/test")
+                .header(HttpHeaders.AUTHORIZATION, "Bearer customer")
+                .exchange()
+                .expectStatus()
+                .isOk();
+
+        web.get()
+                .uri("/api/internal/catalog/test/download")
+                .header(HttpHeaders.AUTHORIZATION, "Bearer customer")
+                .exchange()
+                .expectStatus()
+                .isForbidden();
+    }
+
     private Jwt token(String value, String role) {
         return Jwt.withTokenValue(value)
                 .header("alg", "RS256")
@@ -111,6 +137,11 @@ class GatewaySecurityTest {
 
         @GetMapping("/api/internal/test")
         String internal() {
+            return "ok";
+        }
+
+        @GetMapping("/api/library/test")
+        String library() {
             return "ok";
         }
     }

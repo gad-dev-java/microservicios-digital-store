@@ -4,4 +4,8 @@ public class AssetStorageException extends RuntimeException {
     public AssetStorageException(String message, Throwable cause) {
         super(message, cause);
     }
+
+    public AssetStorageException(String message) {
+        super(message);
+    }
 }
