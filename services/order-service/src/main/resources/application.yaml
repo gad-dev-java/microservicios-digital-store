@@ -38,3 +38,26 @@ spring:
     clients:
       connect-timeout: 500ms
       read-timeout: 2s
+  kafka:
+    bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:9094}
+    producer:
+      key-serializer: org.apache.kafka.common.serialization.StringSerializer
+      value-serializer: org.apache.kafka.common.serialization.StringSerializer
+      acks: all
+      properties:
+        enable.idempotence: true
+        max.in.flight.requests.per.connection: 1
+        max.block.ms: 5000
+        request.timeout.ms: 5000
+        delivery.timeout.ms: 8000
+
+outbox:
+  relay:
+    enabled: true
+    topic: orders.events.v1
+    fixed-delay-ms: 2000
+    initial-delay-ms: 5000
+    batch-size: 20
+    lease-seconds: 30
+    ack-timeout-seconds: 10
+    max-attempts: 5

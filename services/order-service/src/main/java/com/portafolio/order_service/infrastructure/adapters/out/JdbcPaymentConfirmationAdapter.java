@@ -20,14 +20,14 @@ public class JdbcPaymentConfirmationAdapter implements PaymentConfirmationPort {
     public Optional<Attempt> lockAttempt(String providerOrderId, String externalReference) {
         List<Attempt> rows = jdbc.query(
                 """
-                SELECT id, order_id, provider_order_id, amount,
-                       currency, status, review_reason
-                FROM payment_attempts
-                WHERE provider_order_id = ? OR id::text = ?
-                ORDER BY CASE WHEN provider_order_id = ? THEN 0 ELSE 1 END
-                LIMIT 1
-                FOR UPDATE
-                """,
+                        SELECT id, order_id, provider_order_id, amount,
+                               currency, status, review_reason
+                        FROM payment_attempts
+                        WHERE provider_order_id = ? OR id::text = ?
+                        ORDER BY CASE WHEN provider_order_id = ? THEN 0 ELSE 1 END
+                        LIMIT 1
+                        FOR UPDATE
+                        """,
                 (rs, rowNum) -> new Attempt(
                         rs.getObject("id", UUID.class),
                         rs.getObject("order_id", UUID.class),
@@ -46,15 +46,15 @@ public class JdbcPaymentConfirmationAdapter implements PaymentConfirmationPort {
     public StoreOrder lockOrder(UUID orderId) {
         return jdbc.queryForObject(
                 """
-                SELECT o.id, o.buyer_sub, o.buyer_email, o.total_amount,
-                       o.currency, o.status,
-                       (SELECT count(*)
-                        FROM order_items item
-                        WHERE item.order_id = o.id) AS item_count
-                FROM orders o
-                WHERE o.id = ?
-                FOR UPDATE
-                """,
+                        SELECT o.id, o.buyer_sub, o.buyer_email, o.total_amount,
+                               o.currency, o.status,
+                               (SELECT count(*)
+                                FROM order_items item
+                                WHERE item.order_id = o.id) AS item_count
+                        FROM orders o
+                        WHERE o.id = ?
+                        FOR UPDATE
+                        """,
                 (rs, rowNum) -> new StoreOrder(
                         rs.getObject("id", UUID.class),
                         rs.getString("buyer_sub"),
@@ -129,28 +129,56 @@ public class JdbcPaymentConfirmationAdapter implements PaymentConfirmationPort {
     @Override
     public void enqueueOrderPaid(StoreOrder order) {
         UUID eventId = UUID.randomUUID();
-        jdbc.update("""
-                INSERT INTO outbox_events (id, order_id, event_type, payload)
-                VALUES (
-                    ?, ?, 'ORDER_PAID',
-                    jsonb_build_object(
-                        'eventId', ?::text,
-                        'eventType', 'ORDER_PAID',
-                        'version', 1,
-                        'orderId', ?::text,
-                        'buyerSub', ?,
-                        'buyerEmail', ?,
-                        'productIds', (
-                            SELECT COALESCE(
-                                jsonb_agg(product_id::text ORDER BY product_id),
-                                '[]'::jsonb)
-                            FROM order_items
-                            WHERE order_id = ?
+        jdbc.update(
+                """
+                        INSERT INTO outbox_events (id, order_id, event_type, payload)
+                        VALUES (
+                            ?, ?, 'ORDER_PAID',
+                            jsonb_build_object(
+                                'eventId', ?::text,
+                                'eventType', 'ORDER_PAID',
+                                'schemaVersion', 1,
+                                'occurredAt', now(),
+                                'orderId', ?::text,
+                                'buyerSub', ?,
+                                'buyerEmail', ?,
+                                'amount', ?,
+                                'currency', ?,
+                                'productIds', (
+                                    SELECT COALESCE(
+                                        jsonb_agg(item.product_id::text ORDER BY item.id),
+                                        '[]'::jsonb)
+                                    FROM order_items item
+                                    WHERE item.order_id = ?
+                                ),
+                                'items', (
+                                    SELECT COALESCE(
+                                        jsonb_agg(
+                                            jsonb_build_object(
+                                                'productId', item.product_id::text,
+                                                'sku', item.sku,
+                                                'title', item.title,
+                                                'quantity', item.quantity,
+                                                'unitPrice', item.unit_price
+                                            ) ORDER BY item.id),
+                                        '[]'::jsonb)
+                                    FROM order_items item
+                                    WHERE item.order_id = ?
+                                )
+                            )
                         )
-                    )
-                )
-                ON CONFLICT (order_id, event_type) DO NOTHING
-                """, eventId, order.id(), eventId, order.id(), order.buyerSub(), order.buyerEmail(), order.id());
+                        ON CONFLICT (order_id, event_type) DO NOTHING
+                        """,
+                eventId,
+                order.id(),
+                eventId,
+                order.id(),
+                order.buyerSub(),
+                order.buyerEmail(),
+                order.totalAmount(),
+                order.currency(),
+                order.id(),
+                order.id());
     }
 
     @Override
@@ -161,15 +189,15 @@ public class JdbcPaymentConfirmationAdapter implements PaymentConfirmationPort {
 
         int updated = jdbc.update(
                 """
-            UPDATE payment_attempts
-            SET status = ?,
-                provider_order_id = COALESCE(provider_order_id, ?),
-                provider_status = ?,
-                provider_status_detail = ?,
-                review_reason = NULL
-            WHERE id = ?
-              AND status <> 'APPROVED'
-            """, terminalStatus, provider.id(), provider.status(), provider.statusDetail(), attempt.id());
+                        UPDATE payment_attempts
+                        SET status = ?,
+                            provider_order_id = COALESCE(provider_order_id, ?),
+                            provider_status = ?,
+                            provider_status_detail = ?,
+                            review_reason = NULL
+                        WHERE id = ?
+                          AND status <> 'APPROVED'
+                        """, terminalStatus, provider.id(), provider.status(), provider.statusDetail(), attempt.id());
 
         if (updated != 1) {
             throw new IllegalStateException("El intento cambió durante la confirmación");
@@ -179,18 +207,18 @@ public class JdbcPaymentConfirmationAdapter implements PaymentConfirmationPort {
     @Override
     public void markOrderPaymentFailedIfNoActiveAttempt(UUID orderId) {
         jdbc.update("""
-            UPDATE orders AS o
-            SET status = 'PAYMENT_FAILED'
-            WHERE o.id = ?
-              AND o.status = 'PENDING_PAYMENT'
-              AND NOT EXISTS (
-                  SELECT 1
-                  FROM payment_attempts AS active
-                  WHERE active.order_id = o.id
-                    AND active.status IN (
-                        'CREATING', 'PENDING', 'REVIEW_REQUIRED'
-                    )
-              )
-            """, orderId);
+                UPDATE orders AS o
+                SET status = 'PAYMENT_FAILED'
+                WHERE o.id = ?
+                  AND o.status = 'PENDING_PAYMENT'
+                  AND NOT EXISTS (
+                      SELECT 1
+                      FROM payment_attempts AS active
+                      WHERE active.order_id = o.id
+                        AND active.status IN (
+                            'CREATING', 'PENDING', 'REVIEW_REQUIRED'
+                        )
+                  )
+                """, orderId);
     }
 }
