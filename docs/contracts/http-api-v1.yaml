@@ -1,0 +1,577 @@
+openapi: 3.0.3
+info:
+  title: Digital Store HTTP API
+  version: 1.0.0
+  description: >-
+    Contrato de las rutas HTTP de la demo local. Las rutas públicas pasan por Gateway;
+    /api/internal/** queda bloqueada allí y no forma parte de este contrato.
+servers:
+  - url: http://localhost:8080
+    description: Gateway local
+tags:
+  - name: Catalog
+  - name: Catalog admin
+  - name: Orders
+  - name: Library
+  - name: Payment review
+  - name: Webhook
+paths:
+  /api/products:
+    get:
+      tags: [Catalog]
+      summary: Buscar productos publicados
+      parameters:
+        - { name: q, in: query, schema: { type: string, maxLength: 100 }, description: Filtro literal por título }
+        - { $ref: '#/components/parameters/Page' }
+        - { $ref: '#/components/parameters/Size' }
+      responses:
+        '200':
+          description: Página pública
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ProductPage' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+  /api/products/{id}:
+    get:
+      tags: [Catalog]
+      summary: Ver un producto publicado
+      parameters: [{ $ref: '#/components/parameters/Id' }]
+      responses:
+        '200':
+          description: Producto visible
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ProductDetail' }
+        '404': { $ref: '#/components/responses/NotFound' }
+  /api/admin/products:
+    get:
+      tags: [Catalog admin]
+      summary: Listar productos de cualquier estado
+      security: [{ bearerAuth: [] }]
+      x-required-realm-role: ADMIN
+      parameters:
+        - { $ref: '#/components/parameters/Page' }
+        - { $ref: '#/components/parameters/Size' }
+      responses:
+        '200':
+          description: Página administrativa
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/AdminProductPage' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { description: Falta autenticación }
+        '403': { description: Falta el rol ADMIN }
+    post:
+      tags: [Catalog admin]
+      summary: Crear borrador digital
+      security: [{ bearerAuth: [] }]
+      x-required-realm-role: ADMIN
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/ProductDraft' }
+      responses:
+        '201':
+          description: Borrador creado; Location apunta al recurso
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/AdminProduct' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { description: Falta autenticación }
+        '403': { description: Falta el rol ADMIN }
+        '409': { description: SKU ya usado }
+  /api/admin/products/{id}:
+    parameters: [{ $ref: '#/components/parameters/Id' }]
+    get:
+      tags: [Catalog admin]
+      summary: Ver producto administrativo
+      security: [{ bearerAuth: [] }]
+      x-required-realm-role: ADMIN
+      responses:
+        '200':
+          description: Producto
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/AdminProduct' }
+        '404': { $ref: '#/components/responses/NotFound' }
+    put:
+      tags: [Catalog admin]
+      summary: Actualizar título, descripción y precio
+      security: [{ bearerAuth: [] }]
+      x-required-realm-role: ADMIN
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/ProductUpdate' }
+      responses:
+        '200':
+          description: Producto actualizado
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/AdminProduct' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '404': { $ref: '#/components/responses/NotFound' }
+  /api/admin/products/{id}/file:
+    post:
+      tags: [Catalog admin]
+      summary: Adjuntar archivo al borrador
+      security: [{ bearerAuth: [] }]
+      x-required-realm-role: ADMIN
+      parameters: [{ $ref: '#/components/parameters/Id' }]
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [file]
+              properties:
+                file: { type: string, format: binary }
+      responses:
+        '200':
+          description: Archivo guardado
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/AdminProduct' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '404': { $ref: '#/components/responses/NotFound' }
+  /api/admin/products/{id}/publish:
+    post:
+      tags: [Catalog admin]
+      summary: Publicar producto con archivo
+      security: [{ bearerAuth: [] }]
+      x-required-realm-role: ADMIN
+      parameters: [{ $ref: '#/components/parameters/Id' }]
+      responses:
+        '200':
+          description: Producto publicado
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/AdminProduct' }
+        '409': { description: Estado inválido o falta archivo }
+  /api/admin/products/{id}/archive:
+    post:
+      tags: [Catalog admin]
+      summary: Archivar producto
+      security: [{ bearerAuth: [] }]
+      x-required-realm-role: ADMIN
+      parameters: [{ $ref: '#/components/parameters/Id' }]
+      responses:
+        '200':
+          description: Producto archivado
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/AdminProduct' }
+  /api/orders:
+    post:
+      tags: [Orders]
+      summary: Crear pedido idempotente con precios capturados
+      security: [{ bearerAuth: [] }]
+      x-required-realm-role: CUSTOMER
+      parameters:
+        - name: Idempotency-Key
+          in: header
+          required: true
+          schema: { type: string }
+          description: Reutilizar solo con el mismo cuerpo; una repetición correcta devuelve 200.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [productIds]
+              properties:
+                productIds:
+                  type: array
+                  minItems: 1
+                  maxItems: 10
+                  items: { $ref: '#/components/schemas/Uuid' }
+      responses:
+        '201':
+          description: Pedido creado; Location apunta a /api/orders/{id}
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/OrderCreated' }
+        '200':
+          description: Repetición de la misma clave y cuerpo
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/OrderCreated' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { description: Falta autenticación }
+        '403': { description: Falta el rol CUSTOMER }
+        '409': { description: Conflicto de idempotencia o producto ya adquirido }
+        '503': { description: Catalog no disponible }
+  /api/orders/me:
+    get:
+      tags: [Orders]
+      summary: Mis pedidos
+      security: [{ bearerAuth: [] }]
+      x-required-realm-role: CUSTOMER
+      parameters:
+        - { $ref: '#/components/parameters/Page' }
+        - { $ref: '#/components/parameters/Size' }
+      responses:
+        '200':
+          description: Página del comprador autenticado
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/OrderPage' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+  /api/orders/{id}:
+    get:
+      tags: [Orders]
+      summary: Detalle de un pedido propio
+      security: [{ bearerAuth: [] }]
+      x-required-realm-role: CUSTOMER
+      parameters: [{ $ref: '#/components/parameters/Id' }]
+      responses:
+        '200':
+          description: Pedido y líneas capturadas
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/OrderDetail' }
+        '404': { $ref: '#/components/responses/NotFound' }
+  /api/orders/{id}/checkout:
+    post:
+      tags: [Orders]
+      summary: Crear o reutilizar el intento de pago de prueba
+      security: [{ bearerAuth: [] }]
+      x-required-realm-role: CUSTOMER
+      parameters: [{ $ref: '#/components/parameters/Id' }]
+      responses:
+        '200':
+          description: URL de Checkout Pro
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Checkout' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { description: Pedido pagado, derecho existente o intento en revisión }
+        '503': { description: Proveedor de pagos no disponible }
+  /api/admin/orders:
+    get:
+      tags: [Orders]
+      summary: Listar pedidos para administración
+      security: [{ bearerAuth: [] }]
+      x-required-realm-role: ADMIN
+      parameters:
+        - { $ref: '#/components/parameters/Page' }
+        - { $ref: '#/components/parameters/Size' }
+      responses:
+        '200':
+          description: Página administrativa
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/OrderPage' }
+        '403': { description: Falta el rol ADMIN }
+  /api/library:
+    get:
+      tags: [Library]
+      summary: Productos digitales adquiridos
+      security: [{ bearerAuth: [] }]
+      x-required-realm-role: CUSTOMER
+      parameters:
+        - { $ref: '#/components/parameters/Page' }
+        - { $ref: '#/components/parameters/Size' }
+      responses:
+        '200':
+          description: Página de derechos del comprador
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/LibraryPage' }
+  /api/library/{productId}/download:
+    get:
+      tags: [Library]
+      summary: Descargar archivo con derecho vigente
+      security: [{ bearerAuth: [] }]
+      x-required-realm-role: CUSTOMER
+      parameters:
+        - name: productId
+          in: path
+          required: true
+          schema: { $ref: '#/components/schemas/Uuid' }
+      responses:
+        '200':
+          description: Archivo en streaming con Content-Disposition attachment y Cache-Control no-store
+          content:
+            application/octet-stream:
+              schema: { type: string, format: binary }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '429': { description: Límite de descargas simultáneas }
+        '503': { description: Archivo o Catalog no disponible }
+  /api/admin/orders/{orderId}/payment-attempts:
+    get:
+      tags: [Payment review]
+      summary: Historial cronológico de intentos
+      security: [{ bearerAuth: [] }]
+      x-required-realm-role: ADMIN
+      parameters:
+        - name: orderId
+          in: path
+          required: true
+          schema: { $ref: '#/components/schemas/Uuid' }
+      responses:
+        '200':
+          description: Intentos sin secretos del proveedor
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/PaymentAttempt' }
+  /api/admin/payment-attempts/{id}/reconcile:
+    post:
+      tags: [Payment review]
+      summary: Consultar estado en el proveedor
+      security: [{ bearerAuth: [] }]
+      x-required-realm-role: ADMIN
+      parameters: [{ $ref: '#/components/parameters/Id' }]
+      responses:
+        '204': { description: Consulta solicitada }
+        '409': { description: Estado no reconciliable }
+  /api/admin/payment-attempts/{id}/resolve:
+    post:
+      tags: [Payment review]
+      summary: Cerrar un timeout no resuelto con aceptación del riesgo
+      security: [{ bearerAuth: [] }]
+      x-required-realm-role: ADMIN
+      parameters: [{ $ref: '#/components/parameters/Id' }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [resolution, reason, acknowledgeLatePaymentRisk]
+              properties:
+                resolution: { type: string, enum: [ERROR] }
+                reason: { type: string, minLength: 1, maxLength: 1000 }
+                acknowledgeLatePaymentRisk: { type: boolean, enum: [true] }
+      responses:
+        '204': { description: Intento resuelto }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '409': { description: La resolución manual no está permitida }
+  /api/webhooks/mercadopago:
+    post:
+      tags: [Webhook]
+      summary: Recibir notificación firmada de Order (Mercado Pago)
+      description: >-
+        Llamada del proveedor, no del navegador. El backend valida la firma,
+        consulta el estado al proveedor y aplica los efectos de forma idempotente.
+      parameters:
+        - name: data.id
+          in: query
+          required: true
+          schema: { type: string }
+        - name: x-signature
+          in: header
+          required: true
+          schema: { type: string }
+        - name: x-request-id
+          in: header
+          required: false
+          schema: { type: string }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { type: object }
+      responses:
+        '200': { description: Notificación aceptada o tipo irrelevante }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { description: Firma inválida }
+        '503': { description: Configuración o proveedor no disponible }
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: Token de Keycloak del realm digital-store; roles en realm_access.roles.
+  parameters:
+    Id:
+      name: id
+      in: path
+      required: true
+      schema: { $ref: '#/components/schemas/Uuid' }
+    Page:
+      name: page
+      in: query
+      schema: { type: integer, minimum: 0, default: 0 }
+    Size:
+      name: size
+      in: query
+      schema: { type: integer, minimum: 1, maximum: 50, default: 20 }
+  responses:
+    BadRequest:
+      description: Entrada inválida
+      content:
+        application/problem+json:
+          schema: { $ref: '#/components/schemas/Problem' }
+    NotFound:
+      description: Recurso inexistente o no visible
+      content:
+        application/problem+json:
+          schema: { $ref: '#/components/schemas/Problem' }
+  schemas:
+    Uuid: { type: string, format: uuid }
+    Money: { type: number, format: double, minimum: 0 }
+    Problem:
+      type: object
+      properties:
+        type: { type: string, format: uri }
+        title: { type: string }
+        status: { type: integer }
+        detail: { type: string }
+        instance: { type: string }
+        code: { type: string }
+        traceId: { type: string }
+    ProductSummary:
+      type: object
+      required: [id, title, price, currency]
+      properties:
+        id: { $ref: '#/components/schemas/Uuid' }
+        title: { type: string }
+        price: { $ref: '#/components/schemas/Money' }
+        currency: { type: string, enum: [PEN] }
+    ProductDetail:
+      allOf:
+        - { $ref: '#/components/schemas/ProductSummary' }
+        - type: object
+          required: [description]
+          properties:
+            description: { type: string }
+    ProductPage:
+      type: object
+      required: [items, page, size, totalItems, totalPages]
+      properties:
+        items: { type: array, items: { $ref: '#/components/schemas/ProductSummary' } }
+        page: { type: integer }
+        size: { type: integer }
+        totalItems: { type: integer }
+        totalPages: { type: integer }
+    ProductDraft:
+      type: object
+      required: [sku, title, description, price]
+      properties:
+        sku: { type: string, pattern: '^[A-Za-z0-9][A-Za-z0-9_-]{0,63}$' }
+        title: { type: string, minLength: 1, maxLength: 200 }
+        description: { type: string, minLength: 1 }
+        price: { type: number, minimum: 0.01, multipleOf: 0.01 }
+    ProductUpdate:
+      type: object
+      required: [title, description, price]
+      properties:
+        title: { type: string, minLength: 1, maxLength: 200 }
+        description: { type: string, minLength: 1 }
+        price: { type: number, minimum: 0.01, multipleOf: 0.01 }
+    AdminProduct:
+      type: object
+      required: [id, sku, title, description, price, currency, status]
+      properties:
+        id: { $ref: '#/components/schemas/Uuid' }
+        sku: { type: string }
+        title: { type: string }
+        description: { type: string }
+        price: { $ref: '#/components/schemas/Money' }
+        currency: { type: string, enum: [PEN] }
+        status: { type: string, enum: [DRAFT, PUBLISHED, ARCHIVED] }
+        fileName: { type: string, nullable: true }
+        fileSize: { type: integer, format: int64, nullable: true }
+    AdminProductPage:
+      type: object
+      required: [items, page, size, totalItems, totalPages]
+      properties:
+        items: { type: array, items: { $ref: '#/components/schemas/AdminProduct' } }
+        page: { type: integer }
+        size: { type: integer }
+        totalItems: { type: integer }
+        totalPages: { type: integer }
+    OrderItem:
+      type: object
+      required: [productId, sku, title, unitPrice]
+      properties:
+        productId: { $ref: '#/components/schemas/Uuid' }
+        sku: { type: string }
+        title: { type: string }
+        unitPrice: { $ref: '#/components/schemas/Money' }
+    OrderCreated:
+      type: object
+      required: [id, status, totalAmount, currency, items]
+      properties:
+        id: { $ref: '#/components/schemas/Uuid' }
+        status: { type: string, enum: [CREATED, PENDING_PAYMENT, PAYMENT_FAILED, PAID] }
+        totalAmount: { $ref: '#/components/schemas/Money' }
+        currency: { type: string, enum: [PEN] }
+        items: { type: array, items: { $ref: '#/components/schemas/OrderItem' } }
+    OrderSummary:
+      type: object
+      required: [id, buyerEmail, status, totalAmount, currency, createdAt]
+      properties:
+        id: { $ref: '#/components/schemas/Uuid' }
+        buyerEmail: { type: string, format: email }
+        status: { type: string, enum: [CREATED, PENDING_PAYMENT, PAYMENT_FAILED, PAID] }
+        totalAmount: { $ref: '#/components/schemas/Money' }
+        currency: { type: string, enum: [PEN] }
+        createdAt: { type: string, format: date-time }
+        paidAt: { type: string, format: date-time, nullable: true }
+        paymentStatus: { type: string, nullable: true }
+        reviewReason: { type: string, nullable: true }
+    OrderPage:
+      type: object
+      required: [items, page, size, totalItems, totalPages]
+      properties:
+        items: { type: array, items: { $ref: '#/components/schemas/OrderSummary' } }
+        page: { type: integer }
+        size: { type: integer }
+        totalItems: { type: integer }
+        totalPages: { type: integer }
+    OrderDetail:
+      type: object
+      required: [order, items]
+      properties:
+        order: { $ref: '#/components/schemas/OrderSummary' }
+        items: { type: array, items: { $ref: '#/components/schemas/OrderItem' } }
+    Checkout:
+      type: object
+      required: [attemptId, checkoutUrl, reused]
+      properties:
+        attemptId: { $ref: '#/components/schemas/Uuid' }
+        checkoutUrl: { type: string, format: uri }
+        reused: { type: boolean }
+    LibraryItem:
+      type: object
+      required: [productId, orderId, sku, title, grantedAt]
+      properties:
+        productId: { $ref: '#/components/schemas/Uuid' }
+        orderId: { $ref: '#/components/schemas/Uuid' }
+        sku: { type: string }
+        title: { type: string }
+        grantedAt: { type: string, format: date-time }
+    LibraryPage:
+      type: object
+      required: [items, page, size, totalItems, totalPages]
+      properties:
+        items: { type: array, items: { $ref: '#/components/schemas/LibraryItem' } }
+        page: { type: integer }
+        size: { type: integer }
+        totalItems: { type: integer }
+        totalPages: { type: integer }
+    PaymentAttempt:
+      type: object
+      required: [id, orderId, status, createdAt, updatedAt]
+      properties:
+        id: { $ref: '#/components/schemas/Uuid' }
+        orderId: { $ref: '#/components/schemas/Uuid' }
+        providerOrderId: { type: string, nullable: true }
+        status: { type: string }
+        providerStatus: { type: string, nullable: true }
+        providerStatusDetail: { type: string, nullable: true }
+        reviewReason: { type: string, nullable: true }
+        resolutionReason: { type: string, nullable: true }
+        resolvedBy: { type: string, nullable: true }
+        createdAt: { type: string, format: date-time }
+        updatedAt: { type: string, format: date-time }
+        resolvedAt: { type: string, format: date-time, nullable: true }
