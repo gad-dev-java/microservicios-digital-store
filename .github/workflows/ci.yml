@@ -38,6 +38,9 @@ jobs:
           cache: npm
           cache-dependency-path: web/package-lock.json
 
+      - name: Validar contrato OpenAPI
+        run: npx --yes @redocly/cli@2.79.0 lint docs/contracts/http-api-v1.yaml --extends=spec
+
       - name: Instalar dependencias web
         working-directory: web
         run: npm ci

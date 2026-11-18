@@ -25,16 +25,32 @@ No ejecutes `script.sql` sobre las bases: las tablas se crean con las migracione
 
 ## URLs locales y comprobaciones
 
-| Componente | URL |
-| --- | --- |
-| Web de desarrollo | `http://localhost:5173` |
-| Gateway API | `http://localhost:8080` |
+| Componente                  | URL                     |
+| --------------------------- | ----------------------- |
+| Web de desarrollo           | `http://localhost:5173` |
+| Gateway API                 | `http://localhost:8080` |
 | Keycloak, consola y cuentas | `http://localhost:8081` |
-| Mailpit, correo de prueba | `http://localhost:8025` |
-| Eureka | `http://localhost:8761` |
-| Config Server | `http://localhost:8888` |
+| Mailpit, correo de prueba   | `http://localhost:8025` |
+| Eureka                      | `http://localhost:8761` |
+| Config Server               | `http://localhost:8888` |
 
 Inicia la web en otra terminal: `cd web`, `npm ci`, `npm run dev`. Vite envía `/api` al Gateway. Comprueba el catálogo con `Invoke-RestMethod http://localhost:8080/api/products`. El health del Gateway se consulta **dentro del contenedor**, en el puerto de gestión 8082: `docker compose exec gateway-service curl -fsS http://localhost:8082/actuator/health`. `docker compose ps` debe mostrar sanos los servicios persistentes; `kafka-init` debe terminar con código 0.
+
+## Contrato HTTP local
+
+El contrato versionado está en [`docs/contracts/http-api-v1.yaml`](docs/contracts/http-api-v1.yaml). Para explorarlo con Swagger UI:
+
+```powershell
+docker compose up -d swagger-ui
+```
+
+Abre `http://localhost:8083`. El visor es de solo lectura y no ejecuta peticiones. Se inicia únicamente al solicitar el servicio `swagger-ui`; para detenerlo usa `docker compose stop swagger-ui`.
+
+Valida el contrato desde la raíz con:
+
+```powershell
+npx --yes @redocly/cli@2.79.0 lint docs/contracts/http-api-v1.yaml --extends=spec
+```
 
 ## Preparar un producto y un comprador
 

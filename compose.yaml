@@ -259,6 +259,18 @@ services:
       start_period: 40s
     restart: unless-stopped
 
+  swagger-ui:
+    image: swaggerapi/swagger-ui:v5.34.1
+    profiles: [ "docs" ]
+    environment:
+      SWAGGER_JSON: /openapi/http-api-v1.yaml
+      SUPPORTED_SUBMIT_METHODS: "[]"
+      VALIDATOR_URL: none
+    ports:
+      - "127.0.0.1:8083:8080"
+    volumes:
+      - ./docs/contracts/http-api-v1.yaml:/openapi/http-api-v1.yaml:ro
+
 volumes:
   postgres-data:
   product-files:
