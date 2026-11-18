@@ -89,6 +89,17 @@ El evento Kafka `orders.events.v1` usa como clave el ID del pedido; su payload `
 
 Desde la raíz ejecuta `./mvnw verify` en Bash/WSL o `.\mvnw.cmd verify` en PowerShell. Dentro de `web/`, ejecuta `npm ci`, `npm run lint` y `npm run build`. `verify` comprueba formato Java con Spotless y ejecuta pruebas, incluidas las de integración con Testcontainers; requiere Docker activo. Si falla el formato, ejecuta `mvn spotless:apply` y repite `verify`.
 
-`ci.yml` se ejecuta al subir cambios a `master`, `chore/**`, `feat/**` o `fix/**`; ejecuta Java, lint, build web y construcción de imágenes en ese orden. Requiere un runner de GitHub Actions **Linux x64 en WSL2**, con etiqueta `portafolio-local` y acceso a Docker Desktop. En GitHub, abre **Settings → Actions → Runners → New self-hosted runner**, sigue los comandos Linux proporcionados, asigna la etiqueta y deja `./run.sh` activo.
+`ci.yml` se ejecuta al subir cambios a `master`, `chore/**`, `feat/**` o `fix/**`; ejecuta las pruebas Java, valida el contrato OpenAPI, revisa y compila la web, y construye imágenes en ese orden. En `master`, analiza Java con SonarQube después de `verify` y espera el Quality Gate antes de construir imágenes. Requiere un runner de GitHub Actions **Linux x64 en WSL2**, con etiqueta `portafolio-local` y acceso a Docker Desktop. En GitHub, abre **Settings → Actions → Runners → New self-hosted runner**, sigue los comandos Linux proporcionados, asigna la etiqueta y deja `./run.sh` activo.
+
+### Cobertura y SonarQube local
+
+`verify` genera informes JaCoCo en `services/*/target/site/jacoco/jacoco.xml` y HTML en la misma carpeta. SonarQube usa un Compose independiente: añade `SONAR_DB_USER` y `SONAR_DB_PASSWORD` a `.env` según `.env.example`, y arráncalo desde la raíz con PowerShell:
+
+```powershell
+docker compose --env-file .env -f infra/sonar/compose.yaml up -d
+docker compose --env-file .env -f infra/sonar/compose.yaml ps
+```
+
+Abre `http://localhost:9000` y crea el proyecto con clave `digital-store`. En **Settings → Secrets and variables → Actions** de GitHub, guarda un token de análisis del proyecto como secreto `SONAR_TOKEN` y `http://localhost:9000` como variable `SONAR_HOST_URL`. Mantén SonarQube activo en la máquina del runner y comprueba desde WSL2 que `curl -fsS http://localhost:9000/api/system/status` devuelve `"status":"UP"`. El análisis corre solo en `master`; un Quality Gate fallido detiene ese job antes de construir imágenes. Para parar SonarQube sin borrar sus volúmenes, ejecuta `docker compose --env-file .env -f infra/sonar/compose.yaml down`.
 
 Para `deploy-local.yml`, crea en **Settings → Secrets and variables → Actions** los secretos `POSTGRES_USER`, `POSTGRES_PASSWORD`, `KEYCLOAK_ADMIN`, `KEYCLOAK_ADMIN_PASSWORD`, `ORDER_SERVICE_CLIENT_SECRET`, `MERCADOPAGO_ACCESS_TOKEN`, `MERCADOPAGO_WEBHOOK_SECRET` y `MERCADOPAGO_APPLICATION_ID`, con los mismos valores locales de prueba. El workflow manual se ejecuta solo desde `master` y usa Compose en esa máquina. CI usa valores de relleno para construir imágenes y no llama a Mercado Pago real. El túnel no es necesario para `mvn verify` ni para CI.
