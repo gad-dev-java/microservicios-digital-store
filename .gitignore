@@ -6,3 +6,4 @@ web/dist/
 .env.*
 !.env.example
 local-product-files/
+security-reports/

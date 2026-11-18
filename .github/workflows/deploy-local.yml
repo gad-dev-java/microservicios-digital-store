@@ -33,8 +33,29 @@ jobs:
       - name: Validar Compose
         run: docker compose config --quiet
 
-      - name: Desplegar
-        run: docker compose up --build -d
+      - name: Construir imágenes
+        run: docker compose build
+
+      - name: Instalar Trivy
+        uses: aquasecurity/setup-trivy@v0.3.1
+        with:
+          version: v0.76.2
+          cache: true
+
+      - name: Generar SBOM y escanear imágenes
+        run: bash infra/security/scan-images.sh
+
+      - name: Guardar SBOM e informes de Trivy
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: trivy-deploy-${{ github.run_id }}
+          path: security-reports/
+          if-no-files-found: warn
+          retention-days: 14
+
+      - name: Desplegar imágenes aprobadas
+        run: docker compose up --no-build -d
 
       - name: Revisar contenedores
         run: docker compose ps
