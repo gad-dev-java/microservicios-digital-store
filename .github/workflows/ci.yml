@@ -15,6 +15,8 @@ permissions:
 jobs:
   verify:
     runs-on: [self-hosted, Linux, X64, portafolio-local]
+    env:
+      COMPOSE_PROJECT_NAME: ci-${{ github.run_id }}
 
     defaults:
       run:
@@ -80,3 +82,21 @@ jobs:
           MERCADOPAGO_APPLICATION_ID: ci-placeholder
           MERCADOPAGO_EXPECTED_LIVE_MODE: 'false'
         run: docker compose build
+
+      - name: Instalar Trivy
+        uses: aquasecurity/setup-trivy@v0.3.1
+        with:
+          version: v0.76.2
+          cache: true
+
+      - name: Generar SBOM y escanear imágenes
+        run: bash infra/security/scan-images.sh
+
+      - name: Guardar SBOM e informes de Trivy
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: trivy-ci-${{ github.run_id }}
+          path: security-reports/
+          if-no-files-found: warn
+          retention-days: 14
