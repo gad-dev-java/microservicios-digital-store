@@ -249,7 +249,7 @@ paths:
             application/json:
               schema: { $ref: '#/components/schemas/Checkout' }
         '404': { $ref: '#/components/responses/NotFound' }
-        '409': { description: Pedido pagado, derecho existente o intento en revisión }
+        '409': { description: 'Pedido pagado, derecho existente o intento en revisión' }
         '503': { description: Proveedor de pagos no disponible }
   /api/admin/orders:
     get:
