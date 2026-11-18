@@ -1,6 +1,6 @@
 # Historias de usuario y tareas de implementación
 
-Este backlog define el **MVP local** (HT-01 a HT-09 y HU-01 a HU-14) y una etapa posterior de calidad, observabilidad y despliegue (HT-10 a HT-19). Seguir las etapas en orden; dentro de cada etapa, las historias indican sus dependencias. La arquitectura y las reglas de datos se detallan en [architecture.md](architecture.md), y las carpetas objetivo en [repository-structure.md](repository-structure.md). Los pagos usan exclusivamente las credenciales de prueba de Mercado Pago en todos los entornos.
+Este backlog define el **MVP local** (HT-01 a HT-09 y HU-01 a HU-14) y una etapa posterior de calidad, observabilidad y despliegue (HT-10 a HT-18). Seguir las etapas en orden; dentro de cada etapa, las historias indican sus dependencias. La arquitectura y las reglas de datos se detallan en [architecture.md](architecture.md), y las carpetas objetivo en [repository-structure.md](repository-structure.md). Los pagos usan exclusivamente las credenciales de prueba de Mercado Pago en todos los entornos.
 
 **Terminado** significa que el comportamiento funciona desde la web o la API, tiene pruebas para sus reglas y fallos relevantes, no contiene secretos en Git y se puede ejecutar con las instrucciones del `README.md`. Los nombres `HU` identifican funciones visibles; `HT`, trabajo técnico necesario para entregarlas.
 
@@ -224,7 +224,7 @@ Este backlog define el **MVP local** (HT-01 a HT-09 y HU-01 a HU-14) y una etapa
 
 **Aceptación:** desde una instalación limpia se registra un usuario, confirma correo, compra en el entorno de prueba, recibe el webhook y el correo, ve `PAID` y descarga el archivo; `mvn verify` y `npm run build` pasan en el runner local.
 
-## Etapa 6: contrato, calidad y pruebas automatizadas
+## Etapa 6: contrato y calidad
 
 ### HT-10 — Publicar el contrato OpenAPI
 
@@ -242,15 +242,7 @@ Este backlog define el **MVP local** (HT-01 a HT-09 y HU-01 a HU-14) y una etapa
 
 **Aceptación:** el análisis refleja pruebas y cobertura de los módulos; un Quality Gate fallido detiene la construcción de imágenes; el token no aparece en Git ni en los logs.
 
-### HT-12 — Automatizar los flujos web con Playwright
-
-**Depende de:** HT-04 y HT-09.
-
-**Implementar:** probar desde el navegador registro, verificación e inicio de sesión, catálogo, creación y consulta de pedidos y biblioteca. Usar Keycloak y Mailpit locales en un entorno aislado de CI, con datos de prueba reproducibles; simular el proveedor de pagos para no llamar a Mercado Pago ni requerir túnel. Guardar el informe y las trazas de fallos como artefactos del workflow.
-
-**Aceptación:** los recorridos principales pasan en CI sin servicios externos; una falla indica la pantalla y petición afectadas; el pago manual de prueba permanece documentado como verificación aparte.
-
-### HT-13 — Escanear imágenes y generar SBOM
+### HT-12 — Escanear imágenes y generar SBOM
 
 **Depende de:** HT-04 y HT-11.
 
@@ -260,7 +252,7 @@ Este backlog define el **MVP local** (HT-01 a HT-09 y HU-01 a HU-14) y una etapa
 
 ## Etapa 7: observabilidad y rendimiento
 
-### HT-14 — Incorporar observabilidad visual local
+### HT-13 — Incorporar observabilidad visual local
 
 **Depende de:** HT-08 y HT-09.
 
@@ -268,9 +260,9 @@ Este backlog define el **MVP local** (HT-01 a HT-09 y HU-01 a HU-14) y una etapa
 
 **Aceptación:** se puede encontrar una compra por `orderId` en trazas y logs; los objetivos de Prometheus están activos y Grafana muestra datos reales. El webhook aparece como traza separada pero correlacionada con el pedido; no se publican Actuator ni datos sensibles.
 
-### HT-15 — Medir rendimiento con k6
+### HT-14 — Medir rendimiento con k6
 
-**Depende de:** HT-14.
+**Depende de:** HT-13.
 
 **Implementar:** crear escenarios reproducibles para catálogo, pedidos y descargas con umbrales de latencia p95 y tasa de errores basados en una medición inicial. Comparar Redis activo y detenido y comprobar la respuesta ante Catalog lento. Ejecutar la carga completa manualmente o de forma programada en un entorno aislado; dejar solo una prueba ligera y estable en CI habitual. No generar carga contra Mercado Pago.
 
@@ -278,17 +270,17 @@ Este backlog define el **MVP local** (HT-01 a HT-09 y HU-01 a HU-14) y una etapa
 
 ## Etapa 8: Kubernetes y GitOps
 
-### HT-16 — Ejecutar la tienda en Kubernetes local
+### HT-15 — Ejecutar la tienda en Kubernetes local
 
-**Depende de:** HT-09 y HT-14.
+**Depende de:** HT-09 y HT-13.
 
 **Implementar:** crear un clúster `kind` y manifiestos Kustomize `base/` y `overlays/kind/` para web, Gateway, servicios, Keycloak, PostgreSQL, Redis, Kafka, Mailpit y archivos. Usar ConfigMaps, Secrets, DNS de Kubernetes y sondas `startup`, `readiness` y `liveness`. Desactivar Eureka y Config Server en este entorno; sustituir `lb://` y Order → Catalog por DNS de servicios. Ajustar el puerto de gestión de Gateway para que la sonda llegue a la IP del pod sin exponer Actuator. Usar un túnel HTTPS temporal hacia el ingreso local para el webhook de prueba.
 
 **Aceptación:** registro, verificación de correo, compra de prueba, webhook, correo y descarga funcionan en `kind`; reiniciar un pod no pierde pedidos ni archivos. Las rutas internas y Actuator no son públicos; Compose sigue funcionando.
 
-### HT-17 — Desplegar Kubernetes mediante Argo CD
+### HT-16 — Desplegar Kubernetes mediante Argo CD
 
-**Depende de:** HT-13 y HT-16.
+**Depende de:** HT-12 y HT-15.
 
 **Implementar:** configurar Argo CD para observar el overlay de `kind`. GitHub Actions verifica, escanea y publica imágenes con etiqueta inmutable; la versión deseada se cambia en Git y Argo CD sincroniza el clúster. Preparar el mismo mecanismo para el overlay de Azure; no ejecutar `kubectl apply` desde Actions en entornos administrados por Argo CD.
 
@@ -296,22 +288,22 @@ Este backlog define el **MVP local** (HT-01 a HT-09 y HU-01 a HU-14) y una etapa
 
 ## Etapa 9: preparación y despliegue en Azure
 
-### HT-18 — Preparar adaptadores y configuración para Azure
+### HT-17 — Preparar adaptadores y configuración para Azure
 
-**Depende de:** HT-16 y HT-17.
+**Depende de:** HT-15 y HT-16.
 
 **Implementar:** crear `overlays/azure/` y módulos Terraform para AKS, ACR, Application Gateway for Containers, PostgreSQL Flexible Server, Blob Storage, Azure Managed Redis, Communication Services Email y Key Vault con Workload Identity. Mantener Keycloak y la web en AKS; parametrizar dominios HTTPS, issuer/JWKS, bases separadas, Redis TLS, SMTP y mensajería. Añadir un adaptador Azure Blob a Catalog sin modificar los casos de uso ni el streaming autorizado por Order. Probar Event Hubs con Kafka para claves, encabezados W3C, reintentos y DLT; aprovisionar destinos mediante Terraform. Si no cumple, usar Kafka en AKS. Evaluar la ingestión OTLP de Azure Monitor; si no cumple, conservar Tempo y Loki en AKS.
 
 **Aceptación:** los contratos y casos de uso no cambian entre entornos; pasan los tests de adaptadores y `terraform validate`. Quedan documentados los resultados de compatibilidad de Event Hubs y Azure Monitor antes de elegir el destino; no se versionan secretos.
 
-### HT-19 — Desplegar y demostrar la tienda en Azure
+### HT-18 — Desplegar y demostrar la tienda en Azure
 
-**Depende de:** HT-18; requiere suscripción, presupuesto y dominio HTTPS.
+**Depende de:** HT-17; requiere suscripción, presupuesto y dominio HTTPS.
 
-**Implementar:** provisionar la infraestructura aprobada con Terraform. Publicar imágenes identificadas por SHA en ACR desde GitHub Actions con identidad federada OIDC y actualizar el overlay de Azure para que Argo CD despliegue en AKS. Exponer por HTTPS web, API, Keycloak y webhook; mantener privados datos, mensajería, rutas internas y Actuator. Obtener secretos desde Key Vault. Usar Prometheus administrado y Grafana para métricas y el destino de trazas/logs validado en HT-18. Definir verificación posterior al despliegue, vuelta a la imagen anterior y migraciones Flyway compatibles con esa versión.
+**Implementar:** provisionar la infraestructura aprobada con Terraform. Publicar imágenes identificadas por SHA en ACR desde GitHub Actions con identidad federada OIDC y actualizar el overlay de Azure para que Argo CD despliegue en AKS. Exponer por HTTPS web, API, Keycloak y webhook; mantener privados datos, mensajería, rutas internas y Actuator. Obtener secretos desde Key Vault. Usar Prometheus administrado y Grafana para métricas y el destino de trazas/logs validado en HT-17. Definir verificación posterior al despliegue, vuelta a la imagen anterior y migraciones Flyway compatibles con esa versión.
 
 **Aceptación:** desde una instalación limpia, el comprador verifica su cuenta, paga solo con credenciales de prueba, recibe webhook y correo, ve `PAID` y descarga el archivo. La telemetría es consultable y se demuestra la recuperación de una versión anterior sin perder datos.
 
 ## Fuera del alcance funcional
 
-Pagos reales, reembolsos automáticos, cancelación de pedidos, inventario físico, envíos, cupones, reseñas, favoritos y acceso con Google. Los pedidos `CREATED` abandonados permanecen; una compra repetida ya pagada queda para revisión manual sin reembolso automático. Kubernetes y Azure son ampliaciones de infraestructura posteriores al MVP local, descritas en HT-16 a HT-19.
+Pagos reales, reembolsos automáticos, cancelación de pedidos, inventario físico, envíos, cupones, reseñas, favoritos y acceso con Google. Los pedidos `CREATED` abandonados permanecen; una compra repetida ya pagada queda para revisión manual sin reembolso automático. Kubernetes y Azure son ampliaciones de infraestructura posteriores al MVP local, descritas en HT-15 a HT-18.
