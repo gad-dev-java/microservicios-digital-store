@@ -1,0 +1,9 @@
+services:
+  postgres:
+    ports: !reset []
+  redis:
+    ports: !reset []
+  config-server:
+    ports: !reset []
+  discovery-server:
+    ports: !reset []

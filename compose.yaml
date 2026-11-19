@@ -271,6 +271,14 @@ services:
     volumes:
       - ./docs/contracts/http-api-v1.yaml:/openapi/http-api-v1.yaml:ro
 
+  k6:
+    image: grafana/k6:1.8.3
+    profiles: ["perf"]
+    volumes:
+      - ./infra/perf/k6:/scripts:ro
+      - ./infra/perf/results:/results
+    working_dir: /scripts
+
 volumes:
   postgres-data:
   product-files:

@@ -1,0 +1,5 @@
+services:
+  catalog-service:
+    environment:
+      SPRING_PROFILES_ACTIVE: perf
+      PERF_CATALOG_DELAY_MS: "2500"
