@@ -1,4 +1,4 @@
-package com.portafolio.order_service.infrastructure;
+package com.portafolio.order_service.infrastructure.config;
 
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;

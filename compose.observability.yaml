@@ -1,0 +1,94 @@
+x-telemetry-env: &telemetry-env
+  MANAGEMENT_ENDPOINTS_WEB_EXPOSURE_INCLUDE: health,info,prometheus
+  MANAGEMENT_TRACING_EXPORT_OTLP_ENABLED: "true"
+  OTEL_EXPORTER_OTLP_TRACES_ENDPOINT: http://otel-collector:4318/v1/traces
+
+services:
+  gateway-service:
+    environment:
+      <<: *telemetry-env
+      OTEL_SERVICE_NAME: gateway-service
+      MANAGEMENT_SERVER_ADDRESS: 0.0.0.0
+
+  catalog-service:
+    environment:
+      <<: *telemetry-env
+      OTEL_SERVICE_NAME: catalog-service
+
+  order-service:
+    environment:
+      <<: *telemetry-env
+      OTEL_SERVICE_NAME: order-service
+
+  notification-service:
+    environment:
+      <<: *telemetry-env
+      OTEL_SERVICE_NAME: notification-service
+
+  otel-collector:
+    image: otel/opentelemetry-collector:0.165.0
+    profiles: [observability]
+    command: ["--config=/etc/otelcol/config.yaml"]
+    volumes:
+      - ./infra/observability/collector/config.yaml:/etc/otelcol/config.yaml:ro
+    restart: unless-stopped
+
+  prometheus:
+    image: prom/prometheus:v3.16.0
+    profiles: [observability]
+    command:
+      - --config.file=/etc/prometheus/prometheus.yaml
+      - --storage.tsdb.path=/prometheus
+    ports:
+      - "127.0.0.1:9090:9090"
+    volumes:
+      - ./infra/observability/prometheus/prometheus.yaml:/etc/prometheus/prometheus.yaml:ro
+      - prometheus-data:/prometheus
+    restart: unless-stopped
+
+  tempo:
+    image: grafana/tempo:2.10.10
+    profiles: [observability]
+    command: ["-config.file=/etc/tempo/tempo.yaml"]
+    volumes:
+      - ./infra/observability/tempo/tempo.yaml:/etc/tempo/tempo.yaml:ro
+    restart: unless-stopped
+
+  loki:
+    image: grafana/loki:3.7.10
+    profiles: [observability]
+    command: ["-config.file=/etc/loki/loki.yaml"]
+    volumes:
+      - ./infra/observability/loki/loki.yaml:/etc/loki/loki.yaml:ro
+    restart: unless-stopped
+
+  alloy:
+    image: grafana/alloy:v1.22.0
+    profiles: [observability]
+    user: "0"
+    command:
+      - run
+      - --storage.path=/var/lib/alloy/data
+      - /etc/alloy/config.alloy
+    volumes:
+      - ./infra/observability/alloy/config.alloy:/etc/alloy/config.alloy:ro
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - alloy-data:/var/lib/alloy/data
+    restart: unless-stopped
+
+  grafana:
+    image: grafana/grafana:13.3.1
+    profiles: [observability]
+    environment:
+      GF_SECURITY_ADMIN_USER: admin
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_ADMIN_PASSWORD:?Define GRAFANA_ADMIN_PASSWORD en .env}
+    ports:
+      - "127.0.0.1:3000:3000"
+    volumes:
+      - ./infra/observability/grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./infra/observability/grafana/dashboards:/etc/grafana/dashboards:ro
+    restart: unless-stopped
+
+volumes:
+  prometheus-data:
+  alloy-data:

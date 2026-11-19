@@ -1,5 +1,6 @@
-package com.portafolio.order_service.infrastructure;
+package com.portafolio.order_service.infrastructure.config;
 
+import com.portafolio.order_service.infrastructure.RealmRoleConverter;
 import jakarta.servlet.DispatcherType;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -21,7 +22,7 @@ public class SecurityConfig {
                                 .permitAll()
                                 .requestMatchers("/api/webhooks/mercadopago")
                                 .permitAll()
-                                .requestMatchers("/actuator/health", "/actuator/info")
+                                .requestMatchers("/actuator/health", "/actuator/info", "/actuator/prometheus")
                                 .permitAll()
                                 .requestMatchers("/api/admin/**")
                                 .hasRole("ADMIN")

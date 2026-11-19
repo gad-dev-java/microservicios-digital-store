@@ -1,4 +1,4 @@
-package com.portafolio.order_service.infrastructure;
+package com.portafolio.order_service.infrastructure.config;
 
 import io.github.resilience4j.circuitbreaker.CircuitBreaker;
 import io.github.resilience4j.circuitbreaker.CircuitBreakerConfig;
