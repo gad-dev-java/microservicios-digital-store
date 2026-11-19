@@ -7,6 +7,7 @@ D:/portafolio/
 ├── pom.xml                         # Maven padre: versiones, plugins y seis módulos
 ├── mvnw, mvnw.cmd, .mvn/           # Maven Wrapper
 ├── compose.yaml                    # Stack local y redes internas
+├── compose.observability.yaml      # Perfil local con métricas, trazas, logs y Grafana
 ├── .env.example                    # Nombres de variables, sin credenciales
 ├── .gitignore
 ├── README.md                       # CI y despliegue local; la guía de demo sigue pendiente
@@ -29,11 +30,12 @@ D:/portafolio/
 │   ├── postgres/init/              # Solo CREATE DATABASE para el primer arranque
 │   ├── keycloak/                   # Realm: roles, clientes (incluida la cuenta de servicio) y flujos de cuenta
 │   ├── kafka/                      # Aprovisionamiento de orders.events.v1 y orders.events.v1.DLT
+│   ├── observability/              # Collector, Prometheus, Tempo, Loki, Alloy y dashboard Grafana
 │   └── assets/demo/                # Previsto: archivos digitales de muestra
 ├── docs/
 │   ├── architecture.md
 │   ├── api-conventions.md            # Contrato HTTP inicial de HU-03 y reglas compartidas
-│   ├── observability.md              # Logging y trazabilidad previstos para HT-08
+│   ├── observability.md              # Correlación HT-08 y visualización HT-13
 │   ├── repository-structure.md
 │   ├── user-stories.md              # Backlog del MVP con criterios de aceptación
 │   ├── adr/                        # ADR 001 de descargas y futuras decisiones

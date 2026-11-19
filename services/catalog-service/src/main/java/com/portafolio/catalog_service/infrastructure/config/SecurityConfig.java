@@ -20,7 +20,7 @@ public class SecurityConfig {
                 .authorizeHttpRequests(
                         requests -> requests.dispatcherTypeMatchers(DispatcherType.ERROR, DispatcherType.ASYNC)
                                 .permitAll()
-                                .requestMatchers("/actuator/health", "/actuator/info")
+                                .requestMatchers("/actuator/health", "/actuator/info", "/actuator/prometheus")
                                 .permitAll()
                                 .requestMatchers("/api/internal/**")
                                 .hasRole("CATALOG_INTERNAL_READ")

@@ -1,0 +1,11 @@
+apiVersion: 1
+
+providers:
+  - name: digital-store
+    orgId: 1
+    folder: Digital Store
+    type: file
+    disableDeletion: true
+    updateIntervalSeconds: 30
+    options:
+      path: /etc/grafana/dashboards

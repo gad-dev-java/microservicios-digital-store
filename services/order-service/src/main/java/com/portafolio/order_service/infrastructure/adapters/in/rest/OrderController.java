@@ -2,6 +2,7 @@ package com.portafolio.order_service.infrastructure.adapters.in.rest;
 
 import com.portafolio.order_service.application.ports.in.Command;
 import com.portafolio.order_service.application.ports.in.CreateOrderUseCase;
+import com.portafolio.order_service.application.ports.out.OrderTracePort;
 import com.portafolio.order_service.domain.exceptions.OrderException;
 import com.portafolio.order_service.domain.models.Reason;
 import jakarta.validation.Valid;
@@ -22,6 +23,7 @@ import org.springframework.web.bind.annotation.RestController;
 @RequestMapping("/api/orders")
 public class OrderController {
     private final CreateOrderUseCase orders;
+    private final OrderTracePort orderTrace;
 
     @PostMapping
     public ResponseEntity<OrderResponse> create(
@@ -34,6 +36,7 @@ public class OrderController {
         }
 
         var result = orders.create(new Command(jwt.getSubject(), email, request.productIds(), key));
+        orderTrace.tagOrder(result.order().id());
 
         OrderResponse body = OrderResponse.from(result.order());
         if (result.replayed()) {

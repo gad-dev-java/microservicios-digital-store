@@ -2,6 +2,7 @@ package com.portafolio.order_service.infrastructure.adapters.in.rest;
 
 import com.portafolio.order_service.application.ports.in.CheckoutOrderUseCase;
 import com.portafolio.order_service.application.ports.in.CheckoutResult;
+import com.portafolio.order_service.application.ports.out.OrderTracePort;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
@@ -16,10 +17,12 @@ import org.springframework.web.bind.annotation.RestController;
 @RequestMapping("/api/orders")
 public class CheckoutController {
     private final CheckoutOrderUseCase checkout;
+    private final OrderTracePort orderTrace;
 
     @PostMapping("/{id}/checkout")
     public CheckoutResponse open(@PathVariable UUID id, @AuthenticationPrincipal Jwt jwt) {
         CheckoutResult result = checkout.checkout(id, jwt.getSubject());
+        orderTrace.tagOrder(id);
         return new CheckoutResponse(result.attemptId(), result.checkoutUrl(), result.reused());
     }
 }

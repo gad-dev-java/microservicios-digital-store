@@ -15,14 +15,17 @@ public class PaymentConfirmationService {
     private final WebhookReceiptPort receipts;
     private final String expectedApplicationId;
     private final boolean expectedLiveMode;
+    private final OrderTracePort orderTrace;
 
     public PaymentConfirmationService(
             PaymentConfirmationPort store,
             WebhookReceiptPort receipts,
+            OrderTracePort orderTrace,
             @Value("${MERCADOPAGO_APPLICATION_ID:}") String expectedApplicationId,
             @Value("${MERCADOPAGO_EXPECTED_LIVE_MODE:false}") boolean expectedLiveMode) {
         this.store = store;
         this.receipts = receipts;
+        this.orderTrace = orderTrace;
         this.expectedApplicationId = expectedApplicationId;
         this.expectedLiveMode = expectedLiveMode;
     }
@@ -39,6 +42,7 @@ public class PaymentConfirmationService {
                         Reason.PAYMENT_PROVIDER_UNAVAILABLE, "No se encontró el intento del pago notificado"));
 
         StoreOrder order = store.lockOrder(attempt.orderId());
+        orderTrace.tagOrder(order.id());
 
         if ("APPROVED".equals(attempt.status())) {
             markReceiptProcessed(notificationId);
