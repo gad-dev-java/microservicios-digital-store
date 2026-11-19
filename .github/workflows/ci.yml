@@ -17,6 +17,15 @@ jobs:
     runs-on: [self-hosted, Linux, X64, portafolio-local]
     env:
       COMPOSE_PROJECT_NAME: ci-${{ github.run_id }}
+      POSTGRES_USER: ci
+      POSTGRES_PASSWORD: ci-placeholder
+      KEYCLOAK_ADMIN: ci
+      KEYCLOAK_ADMIN_PASSWORD: ci-placeholder
+      ORDER_SERVICE_CLIENT_SECRET: ci-placeholder
+      MERCADOPAGO_ACCESS_TOKEN: ci-placeholder
+      MERCADOPAGO_WEBHOOK_SECRET: ci-placeholder
+      MERCADOPAGO_APPLICATION_ID: ci-placeholder
+      MERCADOPAGO_EXPECTED_LIVE_MODE: 'false'
 
     defaults:
       run:
@@ -71,17 +80,31 @@ jobs:
         run: npm run build
 
       - name: Construir imágenes
-        env:
-          POSTGRES_USER: ci
-          POSTGRES_PASSWORD: ci-placeholder
-          KEYCLOAK_ADMIN: ci
-          KEYCLOAK_ADMIN_PASSWORD: ci-placeholder
-          ORDER_SERVICE_CLIENT_SECRET: ci-placeholder
-          MERCADOPAGO_ACCESS_TOKEN: ci-placeholder
-          MERCADOPAGO_WEBHOOK_SECRET: ci-placeholder
-          MERCADOPAGO_APPLICATION_ID: ci-placeholder
-          MERCADOPAGO_EXPECTED_LIVE_MODE: 'false'
         run: docker compose build
+
+      - name: Prueba ligera de catálogo con k6
+        run: |
+          set -euo pipefail
+          mkdir -p infra/perf/results
+          trap 'docker compose -f compose.yaml -f infra/perf/compose.ci.yaml down -v --remove-orphans' EXIT
+          docker compose -f compose.yaml -f infra/perf/compose.ci.yaml up -d --wait redis catalog-service
+          docker compose -f compose.yaml -f infra/perf/compose.ci.yaml run --rm --no-deps \
+            -e K6_MODE=catalog \
+            -e K6_BASE_URL=http://catalog-service:8080 \
+            -e PERF_VUS=1 \
+            -e PERF_DURATION=10s \
+            -e K6_P95_MS=500 \
+            -e K6_REPORT=/results/ci-catalog.json \
+            k6 run /scripts/store.js
+
+      - name: Guardar reporte k6
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: k6-ci-${{ github.run_id }}
+          path: infra/perf/results/ci-catalog.json
+          if-no-files-found: warn
+          retention-days: 14
 
       - name: Instalar Trivy
         uses: aquasecurity/setup-trivy@v0.3.1

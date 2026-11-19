@@ -63,6 +63,10 @@ docker compose -f compose.yaml -f compose.observability.yaml --profile observabi
 
 Abre Grafana en `http://localhost:3000` (usuario `admin`) y Prometheus en `http://localhost:9090/targets`; los cuatro servicios Java deben estar `UP`. El dashboard versionado está en `infra/observability/grafana/dashboards/digital-store.json`. En Grafana, usa Tempo con `{ span."order.id" = "UUID_DEL_PEDIDO" }` y Loki con `{service_name="order-service"} |= "UUID_DEL_PEDIDO"` para encontrar una compra nueva. El webhook genera otra traza con el mismo atributo `order.id`. Los Actuator y los puertos de Tempo, Loki y Collector solo son accesibles dentro de Compose. `docker compose -f compose.yaml -f compose.observability.yaml --profile observability down` detiene toda la pila sin borrar datos. Usa los mismos dos archivos al bajarla: `docker compose down` con solo `compose.yaml` puede dejar Prometheus activo, mientras que los servicios Java vuelven a arrancar sin el endpoint de métricas. Para volver a la tienda sin observabilidad, arráncala después con `docker compose -f compose.yaml up -d`.
 
+## Pruebas de rendimiento
+
+HT-14 usa k6 en Docker para medir catálogo, creación de pedidos y descargas. La guía de ejecución, los umbrales iniciales, el entorno aislado y la comparación con Redis están en [`infra/perf/README.md`](infra/perf/README.md). El CI ejecuta únicamente un smoke de catálogo y guarda su reporte JSON como artefacto.
+
 ## Preparar un producto y un comprador
 
 1. En Keycloak (`http://localhost:8081`), entra a la consola con `KEYCLOAK_ADMIN` y `KEYCLOAK_ADMIN_PASSWORD`; selecciona el realm `digital-store`. Crea un usuario administrador, marca **Email verified**, asigna el rol de realm `ADMIN` y establece una contraseña no temporal. La cuenta bootstrap de `master` no es el administrador de la tienda.
