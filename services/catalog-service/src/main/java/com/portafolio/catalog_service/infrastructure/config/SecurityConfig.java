@@ -17,19 +17,20 @@ public class SecurityConfig {
         jwtConverter.setJwtGrantedAuthoritiesConverter(new RealmRoleConverter());
 
         return http.csrf(AbstractHttpConfigurer::disable)
-                .authorizeHttpRequests(
-                        requests -> requests.dispatcherTypeMatchers(DispatcherType.ERROR, DispatcherType.ASYNC)
-                                .permitAll()
-                                .requestMatchers("/actuator/health", "/actuator/info", "/actuator/prometheus")
-                                .permitAll()
-                                .requestMatchers("/api/internal/**")
-                                .hasRole("CATALOG_INTERNAL_READ")
-                                .requestMatchers(HttpMethod.GET, "/api/products", "/api/products/**")
-                                .permitAll()
-                                .requestMatchers("/api/admin/**")
-                                .hasRole("ADMIN")
-                                .anyRequest()
-                                .denyAll())
+                .authorizeHttpRequests(requests -> requests.dispatcherTypeMatchers(
+                                DispatcherType.ERROR, DispatcherType.ASYNC)
+                        .permitAll()
+                        .requestMatchers(
+                                "/actuator/health", "/actuator/health/**", "/actuator/info", "/actuator/prometheus")
+                        .permitAll()
+                        .requestMatchers("/api/internal/**")
+                        .hasRole("CATALOG_INTERNAL_READ")
+                        .requestMatchers(HttpMethod.GET, "/api/products", "/api/products/**")
+                        .permitAll()
+                        .requestMatchers("/api/admin/**")
+                        .hasRole("ADMIN")
+                        .anyRequest()
+                        .denyAll())
                 .oauth2ResourceServer(oauth2 -> oauth2.jwt(jwt -> jwt.jwtAuthenticationConverter(jwtConverter)))
                 .build();
     }

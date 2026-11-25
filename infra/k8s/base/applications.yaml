@@ -1,0 +1,355 @@
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: catalog-files
+spec:
+  accessModes: [ReadWriteOnce]
+  resources:
+    requests:
+      storage: 2Gi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: catalog-service
+spec:
+  selector:
+    app: catalog-service
+  ports:
+    - port: 80
+      targetPort: 8080
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: catalog-service
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app: catalog-service
+  template:
+    metadata:
+      labels:
+        app: catalog-service
+    spec:
+      containers:
+        - name: catalog-service
+          image: digital-store/catalog-service:dev
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 8080
+          envFrom:
+            - configMapRef:
+                name: app-config
+          env:
+            - name: DB_URL_POSTGRES
+              value: jdbc:postgresql://postgres:5432/catalog_db
+            - name: DB_USERNAME_POSTGRES
+              valueFrom:
+                secretKeyRef:
+                  name: store-secrets
+                  key: POSTGRES_USER
+            - name: DB_PASSWORD_POSTGRES
+              valueFrom:
+                secretKeyRef:
+                  name: store-secrets
+                  key: POSTGRES_PASSWORD
+            - name: KEYCLOAK_JWKS_URI
+              value: http://keycloak:8080/realms/digital-store/protocol/openid-connect/certs
+            - name: REDIS_HOST
+              value: redis
+            - name: CATALOG_STORAGE_PATH
+              value: /app/files
+          volumeMounts:
+            - name: files
+              mountPath: /app/files
+          startupProbe:
+            httpGet:
+              path: /actuator/health/liveness
+              port: 8080
+            periodSeconds: 5
+            failureThreshold: 48
+          readinessProbe:
+            httpGet:
+              path: /actuator/health/readiness
+              port: 8080
+            periodSeconds: 5
+          livenessProbe:
+            httpGet:
+              path: /actuator/health/liveness
+              port: 8080
+            periodSeconds: 10
+      volumes:
+        - name: files
+          persistentVolumeClaim:
+            claimName: catalog-files
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: order-service
+spec:
+  selector:
+    app: order-service
+  ports:
+    - port: 8080
+      targetPort: 8080
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: order-service
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: order-service
+  template:
+    metadata:
+      labels:
+        app: order-service
+    spec:
+      containers:
+        - name: order-service
+          image: digital-store/order-service:dev
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 8080
+          envFrom:
+            - configMapRef:
+                name: app-config
+          env:
+            - name: DB_URL_POSTGRES
+              value: jdbc:postgresql://postgres:5432/orders_db
+            - name: DB_USERNAME_POSTGRES
+              valueFrom:
+                secretKeyRef:
+                  name: store-secrets
+                  key: POSTGRES_USER
+            - name: DB_PASSWORD_POSTGRES
+              valueFrom:
+                secretKeyRef:
+                  name: store-secrets
+                  key: POSTGRES_PASSWORD
+            - name: KEYCLOAK_JWKS_URI
+              value: http://keycloak:8080/realms/digital-store/protocol/openid-connect/certs
+            - name: KEYCLOAK_TOKEN_URI
+              value: http://keycloak:8080/realms/digital-store/protocol/openid-connect/token
+            - name: ORDER_SERVICE_CLIENT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: store-secrets
+                  key: ORDER_SERVICE_CLIENT_SECRET
+            - name: KAFKA_BOOTSTRAP_SERVERS
+              value: kafka:9092
+            - name: MERCADOPAGO_ACCESS_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: store-secrets
+                  key: MERCADOPAGO_ACCESS_TOKEN
+            - name: MERCADOPAGO_WEBHOOK_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: store-secrets
+                  key: MERCADOPAGO_WEBHOOK_SECRET
+            - name: MERCADOPAGO_APPLICATION_ID
+              valueFrom:
+                secretKeyRef:
+                  name: store-secrets
+                  key: MERCADOPAGO_APPLICATION_ID
+            - name: MERCADOPAGO_EXPECTED_LIVE_MODE
+              value: "false"
+          startupProbe:
+            httpGet:
+              path: /actuator/health/liveness
+              port: 8080
+            periodSeconds: 5
+            failureThreshold: 48
+          readinessProbe:
+            httpGet:
+              path: /actuator/health/readiness
+              port: 8080
+            periodSeconds: 5
+          livenessProbe:
+            httpGet:
+              path: /actuator/health/liveness
+              port: 8080
+            periodSeconds: 10
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: notification-service
+spec:
+  selector:
+    app: notification-service
+  ports:
+    - port: 8080
+      targetPort: 8080
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: notification-service
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: notification-service
+  template:
+    metadata:
+      labels:
+        app: notification-service
+    spec:
+      containers:
+        - name: notification-service
+          image: digital-store/notification-service:dev
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 8080
+          envFrom:
+            - configMapRef:
+                name: app-config
+          env:
+            - name: DB_URL_POSTGRES
+              value: jdbc:postgresql://postgres:5432/notifications_db
+            - name: DB_USERNAME_POSTGRES
+              valueFrom:
+                secretKeyRef:
+                  name: store-secrets
+                  key: POSTGRES_USER
+            - name: DB_PASSWORD_POSTGRES
+              valueFrom:
+                secretKeyRef:
+                  name: store-secrets
+                  key: POSTGRES_PASSWORD
+            - name: KAFKA_BOOTSTRAP_SERVERS
+              value: kafka:9092
+            - name: MAIL_HOST
+              value: mailpit
+            - name: MAIL_PORT
+              value: "1025"
+          startupProbe:
+            httpGet:
+              path: /actuator/health/liveness
+              port: 8080
+            periodSeconds: 5
+            failureThreshold: 48
+          readinessProbe:
+            httpGet:
+              path: /actuator/health/readiness
+              port: 8080
+            periodSeconds: 5
+          livenessProbe:
+            httpGet:
+              path: /actuator/health/liveness
+              port: 8080
+            periodSeconds: 10
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: gateway-service
+spec:
+  selector:
+    app: gateway-service
+  ports:
+    - port: 8080
+      targetPort: 8080
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: gateway-service
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: gateway-service
+  template:
+    metadata:
+      labels:
+        app: gateway-service
+    spec:
+      containers:
+        - name: gateway-service
+          image: digital-store/gateway-service:dev
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 8080
+            - containerPort: 8082
+          envFrom:
+            - configMapRef:
+                name: app-config
+          env:
+            - name: KEYCLOAK_JWKS_URI
+              value: http://keycloak:8080/realms/digital-store/protocol/openid-connect/certs
+            - name: MANAGEMENT_SERVER_ADDRESS
+              value: 0.0.0.0
+          startupProbe:
+            httpGet:
+              path: /actuator/health/liveness
+              port: 8082
+            periodSeconds: 5
+            failureThreshold: 48
+          readinessProbe:
+            httpGet:
+              path: /actuator/health/readiness
+              port: 8082
+            periodSeconds: 5
+          livenessProbe:
+            httpGet:
+              path: /actuator/health/liveness
+              port: 8082
+            periodSeconds: 10
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: web
+spec:
+  selector:
+    app: web
+  ports:
+    - port: 80
+      targetPort: 80
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: web
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: web
+  template:
+    metadata:
+      labels:
+        app: web
+    spec:
+      containers:
+        - name: web
+          image: digital-store/web:dev
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 80
+          startupProbe:
+            httpGet:
+              path: /
+              port: 80
+            periodSeconds: 5
+            failureThreshold: 12
+          readinessProbe:
+            httpGet:
+              path: /
+              port: 80
+            periodSeconds: 5
+          livenessProbe:
+            httpGet:
+              path: /
+              port: 80
+            periodSeconds: 10

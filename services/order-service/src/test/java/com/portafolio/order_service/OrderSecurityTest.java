@@ -45,6 +45,12 @@ class OrderSecurityTest {
     }
 
     @Test
+    void kubernetesHealthProbesDoNotNeedAToken() throws Exception {
+        mvc.perform(get("/actuator/health/liveness")).andExpect(status().isOk());
+        mvc.perform(get("/actuator/health/readiness")).andExpect(status().isOk());
+    }
+
+    @Test
     void customerCanAccessOrdersButNotAdmin() throws Exception {
         mvc.perform(get("/api/orders/test").header(HttpHeaders.AUTHORIZATION, "Bearer customer"))
                 .andExpect(status().isOk());
@@ -78,6 +84,11 @@ class OrderSecurityTest {
 
         @GetMapping("/api/admin/test")
         String admin() {
+            return "ok";
+        }
+
+        @GetMapping({"/actuator/health/liveness", "/actuator/health/readiness"})
+        String health() {
             return "ok";
         }
     }

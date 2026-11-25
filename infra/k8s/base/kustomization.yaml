@@ -1,0 +1,22 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+namespace: digital-store
+
+resources:
+  - namespace.yaml
+  - infrastructure.yaml
+  - applications.yaml
+
+configMapGenerator:
+  - name: app-config
+    literals:
+      - SPRING_PROFILES_ACTIVE=k8s
+      - SPRING_CONFIG_IMPORT=
+      - SPRING_CLOUD_CONFIG_ENABLED=false
+      - SPRING_CLOUD_CONFIG_IMPORT_CHECK_ENABLED=false
+      - EUREKA_CLIENT_ENABLED=false
+      - SPRING_CLOUD_DISCOVERY_ENABLED=false
+      - MANAGEMENT_ENDPOINT_HEALTH_PROBES_ENABLED=true
+      - MANAGEMENT_TRACING_EXPORT_OTLP_ENABLED=false
+      - MANAGEMENT_OTLP_METRICS_EXPORT_ENABLED=false

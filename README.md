@@ -67,6 +67,10 @@ Abre Grafana en `http://localhost:3000` (usuario `admin`) y Prometheus en `http:
 
 HT-14 usa k6 en Docker para medir catálogo, creación de pedidos y descargas. La guía de ejecución, los umbrales iniciales, el entorno aislado y la comparación con Redis están en [`infra/perf/README.md`](infra/perf/README.md). El CI ejecuta únicamente un smoke de catálogo y guarda su reporte JSON como artefacto.
 
+## Kubernetes local
+
+HT-15 ejecuta la tienda completa en Minikube con Kustomize. La preparación, los manifiestos, el acceso local y la prueba de persistencia están en [`infra/k8s/README.md`](infra/k8s/README.md). Este entorno usa datos propios; no copia los volúmenes de Compose.
+
 ## Preparar un producto y un comprador
 
 1. En Keycloak (`http://localhost:8081`), entra a la consola con `KEYCLOAK_ADMIN` y `KEYCLOAK_ADMIN_PASSWORD`; selecciona el realm `digital-store`. Crea un usuario administrador, marca **Email verified**, asigna el rol de realm `ADMIN` y establece una contraseña no temporal. La cuenta bootstrap de `master` no es el administrador de la tienda.
