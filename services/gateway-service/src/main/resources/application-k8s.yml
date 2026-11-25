@@ -1,0 +1,35 @@
+server:
+  port: 8080
+
+spring:
+  cloud:
+    gateway:
+      server:
+        webflux:
+          routes:
+            - id: catalog-public
+              uri: http://catalog-service
+              predicates:
+                - Path=/api/products,/api/products/**
+            - id: catalog-admin
+              uri: http://catalog-service
+              predicates:
+                - Path=/api/admin/products,/api/admin/products/**
+            - id: orders
+              uri: http://order-service:8080
+              predicates:
+                - Path=/api/orders,/api/orders/**,/api/admin/orders,/api/admin/orders/**,/api/admin/payment-attempts/**
+            - id: mercado-pago-webhook
+              uri: http://order-service:8080
+              predicates:
+                - Path=/api/webhooks/mercadopago
+            - id: library
+              uri: http://order-service:8080
+              predicates:
+                - Path=/api/library,/api/library/**
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          issuer-uri: http://localhost:8081/realms/digital-store
+          jwk-set-uri: ${KEYCLOAK_JWKS_URI}

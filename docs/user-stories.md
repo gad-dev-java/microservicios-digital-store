@@ -274,17 +274,17 @@ Este backlog define el **MVP local** (HT-01 a HT-09 y HU-01 a HU-14) y una etapa
 
 **Depende de:** HT-09 y HT-13.
 
-**Implementar:** crear un clúster `kind` y manifiestos Kustomize `base/` y `overlays/kind/` para web, Gateway, servicios, Keycloak, PostgreSQL, Redis, Kafka, Mailpit y archivos. Usar ConfigMaps, Secrets, DNS de Kubernetes y sondas `startup`, `readiness` y `liveness`. Desactivar Eureka y Config Server en este entorno; sustituir `lb://` y Order → Catalog por DNS de servicios. Ajustar el puerto de gestión de Gateway para que la sonda llegue a la IP del pod sin exponer Actuator. Usar un túnel HTTPS temporal hacia el ingreso local para el webhook de prueba.
+**Implementar:** crear un clúster Minikube y manifiestos Kustomize `base/` y `overlays/minikube/` para web, Gateway, servicios, Keycloak, PostgreSQL, Redis, Kafka, Mailpit y archivos. Usar ConfigMaps, Secrets, DNS de Kubernetes y sondas `startup`, `readiness` y `liveness`. Desactivar Eureka y Config Server en este entorno; sustituir `lb://` y Order → Catalog por DNS de servicios. Ajustar el puerto de gestión de Gateway para que la sonda llegue a la IP del pod sin exponer Actuator. Usar un túnel HTTPS temporal hacia la entrada local de Gateway para el webhook de prueba.
 
-**Aceptación:** registro, verificación de correo, compra de prueba, webhook, correo y descarga funcionan en `kind`; reiniciar un pod no pierde pedidos ni archivos. Las rutas internas y Actuator no son públicos; Compose sigue funcionando.
+**Aceptación:** registro, verificación de correo, compra de prueba, webhook, correo y descarga funcionan en Minikube; reiniciar un pod no pierde pedidos ni archivos. Las rutas internas y Actuator no son públicos; Compose sigue funcionando.
 
 ### HT-16 — Desplegar Kubernetes mediante Argo CD
 
 **Depende de:** HT-12 y HT-15.
 
-**Implementar:** configurar Argo CD para observar el overlay de `kind`. GitHub Actions verifica, escanea y publica imágenes con etiqueta inmutable; la versión deseada se cambia en Git y Argo CD sincroniza el clúster. Preparar el mismo mecanismo para el overlay de Azure; no ejecutar `kubectl apply` desde Actions en entornos administrados por Argo CD.
+**Implementar:** configurar Argo CD para observar el overlay de Minikube. GitHub Actions verifica, escanea y publica imágenes con etiqueta inmutable; la versión deseada se cambia en Git y Argo CD sincroniza el clúster. Preparar el mismo mecanismo para el overlay de Azure; no ejecutar `kubectl apply` desde Actions en entornos administrados por Argo CD.
 
-**Aceptación:** un cambio aprobado en Git actualiza `kind`; revertir el cambio restaura la versión anterior y el estado de sincronización es visible. Una imagen que no pasó CI ni Trivy no se despliega.
+**Aceptación:** un cambio aprobado en Git actualiza Minikube; revertir el cambio restaura la versión anterior y el estado de sincronización es visible. Una imagen que no pasó CI ni Trivy no se despliega.
 
 ## Etapa 9: preparación y despliegue en Azure
 

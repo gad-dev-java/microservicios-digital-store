@@ -44,6 +44,12 @@ class GatewaySecurityTest {
     }
 
     @Test
+    void kubernetesHealthProbesDoNotNeedAToken() {
+        web.get().uri("/actuator/health/liveness").exchange().expectStatus().isOk();
+        web.get().uri("/actuator/health/readiness").exchange().expectStatus().isOk();
+    }
+
+    @Test
     void customerCannotAccessAdminOrInternalRoute() {
         web.get()
                 .uri("/api/admin/test")
@@ -142,6 +148,11 @@ class GatewaySecurityTest {
 
         @GetMapping("/api/library/test")
         String library() {
+            return "ok";
+        }
+
+        @GetMapping({"/actuator/health/liveness", "/actuator/health/readiness"})
+        String health() {
             return "ok";
         }
     }

@@ -17,21 +17,22 @@ public class SecurityConfig {
         jwtConverter.setJwtGrantedAuthoritiesConverter(new RealmRoleConverter());
 
         return http.csrf(AbstractHttpConfigurer::disable)
-                .authorizeHttpRequests(
-                        requests -> requests.dispatcherTypeMatchers(DispatcherType.ERROR, DispatcherType.ASYNC)
-                                .permitAll()
-                                .requestMatchers("/api/webhooks/mercadopago")
-                                .permitAll()
-                                .requestMatchers("/actuator/health", "/actuator/info", "/actuator/prometheus")
-                                .permitAll()
-                                .requestMatchers("/api/admin/**")
-                                .hasRole("ADMIN")
-                                .requestMatchers("/api/orders", "/api/orders/**")
-                                .hasRole("CUSTOMER")
-                                .requestMatchers("/api/library", "/api/library/**")
-                                .hasRole("CUSTOMER")
-                                .anyRequest()
-                                .denyAll())
+                .authorizeHttpRequests(requests -> requests.dispatcherTypeMatchers(
+                                DispatcherType.ERROR, DispatcherType.ASYNC)
+                        .permitAll()
+                        .requestMatchers("/api/webhooks/mercadopago")
+                        .permitAll()
+                        .requestMatchers(
+                                "/actuator/health", "/actuator/health/**", "/actuator/info", "/actuator/prometheus")
+                        .permitAll()
+                        .requestMatchers("/api/admin/**")
+                        .hasRole("ADMIN")
+                        .requestMatchers("/api/orders", "/api/orders/**")
+                        .hasRole("CUSTOMER")
+                        .requestMatchers("/api/library", "/api/library/**")
+                        .hasRole("CUSTOMER")
+                        .anyRequest()
+                        .denyAll())
                 .oauth2ResourceServer(oauth2 -> oauth2.jwt(jwt -> jwt.jwtAuthenticationConverter(jwtConverter)))
                 .build();
     }

@@ -4,12 +4,14 @@ import io.github.resilience4j.circuitbreaker.CircuitBreaker;
 import io.github.resilience4j.circuitbreaker.CircuitBreakerConfig;
 import java.net.http.HttpClient;
 import java.time.Duration;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.config.ConfigurableBeanFactory;
 import org.springframework.boot.restclient.autoconfigure.RestClientBuilderConfigurer;
 import org.springframework.cloud.client.loadbalancer.LoadBalanced;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Primary;
+import org.springframework.context.annotation.Profile;
 import org.springframework.context.annotation.Scope;
 import org.springframework.http.client.JdkClientHttpRequestFactory;
 import org.springframework.security.oauth2.client.AuthorizedClientServiceOAuth2AuthorizedClientManager;
@@ -37,9 +39,16 @@ public class CatalogClientConfig {
         return manager;
     }
 
-    @Bean
+    @Bean("catalogBuilder")
     @LoadBalanced
+    @Profile("!k8s")
     RestClient.Builder loadBalancedRestClientBuilder(RestClientBuilderConfigurer configurer) {
+        return configurer.configure(RestClient.builder());
+    }
+
+    @Bean("catalogBuilder")
+    @Profile("k8s")
+    RestClient.Builder kubernetesRestClientBuilder(RestClientBuilderConfigurer configurer) {
         return configurer.configure(RestClient.builder());
     }
 
@@ -51,7 +60,8 @@ public class CatalogClientConfig {
     }
 
     @Bean("catalogRestClient")
-    RestClient catalogRestClient(@LoadBalanced RestClient.Builder builder, OAuth2AuthorizedClientManager manager) {
+    RestClient catalogRestClient(
+            @Qualifier("catalogBuilder") RestClient.Builder builder, OAuth2AuthorizedClientManager manager) {
         var interceptor = new OAuth2ClientHttpRequestInterceptor(manager);
         interceptor.setPrincipalResolver(new RequestAttributePrincipalResolver());
 
@@ -82,7 +92,7 @@ public class CatalogClientConfig {
 
     @Bean("catalogDownloadRestClient")
     RestClient catalogDownloadRestClient(
-            @LoadBalanced RestClient.Builder builder, OAuth2AuthorizedClientManager manager) {
+            @Qualifier("catalogBuilder") RestClient.Builder builder, OAuth2AuthorizedClientManager manager) {
         var interceptor = new OAuth2ClientHttpRequestInterceptor(manager);
         interceptor.setPrincipalResolver(new RequestAttributePrincipalResolver());
 

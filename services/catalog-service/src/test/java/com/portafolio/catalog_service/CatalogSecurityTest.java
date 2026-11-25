@@ -45,6 +45,12 @@ class CatalogSecurityTest {
     }
 
     @Test
+    void kubernetesHealthProbesDoNotNeedAToken() throws Exception {
+        mvc.perform(get("/actuator/health/liveness")).andExpect(status().isOk());
+        mvc.perform(get("/actuator/health/readiness")).andExpect(status().isOk());
+    }
+
+    @Test
     void customerCannotAccessAdminOrInternalRoute() throws Exception {
         mvc.perform(get("/api/admin/test").header(HttpHeaders.AUTHORIZATION, "Bearer customer"))
                 .andExpect(status().isForbidden());
@@ -78,6 +84,11 @@ class CatalogSecurityTest {
 
         @GetMapping("/api/admin/test")
         String admin() {
+            return "ok";
+        }
+
+        @GetMapping({"/actuator/health/liveness", "/actuator/health/readiness"})
+        String health() {
             return "ok";
         }
     }
