@@ -1,6 +1,6 @@
 # Historias de usuario y tareas de implementación
 
-Este backlog define el **MVP local** (HT-01 a HT-09 y HU-01 a HU-14) y una etapa posterior de calidad, observabilidad y despliegue (HT-10 a HT-18). Seguir las etapas en orden; dentro de cada etapa, las historias indican sus dependencias. La arquitectura y las reglas de datos se detallan en [architecture.md](architecture.md), y las carpetas objetivo en [repository-structure.md](repository-structure.md). Los pagos usan exclusivamente las credenciales de prueba de Mercado Pago en todos los entornos.
+Este backlog define el **MVP local** (HT-01 a HT-09 y HU-01 a HU-14), las mejoras locales del portafolio (HT-10 a HT-16) y una ampliación futura **opcional** en Azure (HT-17 y HT-18). Seguir el orden y las dependencias de las historias que se decida implementar; HT-17 y HT-18 no son requisitos para cerrar ni presentar la demo local. La arquitectura y las reglas de datos se detallan en [architecture.md](architecture.md), y las carpetas objetivo en [repository-structure.md](repository-structure.md). Los pagos usan exclusivamente las credenciales de prueba de Mercado Pago en todos los entornos.
 
 **Terminado** significa que el comportamiento funciona desde la web o la API, tiene pruebas para sus reglas y fallos relevantes, no contiene secretos en Git y se puede ejecutar con las instrucciones del `README.md`. Los nombres `HU` identifican funciones visibles; `HT`, trabajo técnico necesario para entregarlas.
 
@@ -282,13 +282,17 @@ Este backlog define el **MVP local** (HT-01 a HT-09 y HU-01 a HU-14) y una etapa
 
 **Depende de:** HT-12 y HT-15.
 
-**Implementar:** configurar Argo CD para observar el overlay de Minikube. GitHub Actions verifica, escanea y publica imágenes con etiqueta inmutable; la versión deseada se cambia en Git y Argo CD sincroniza el clúster. Preparar el mismo mecanismo para el overlay de Azure; no ejecutar `kubectl apply` desde Actions en entornos administrados por Argo CD.
+**Implementar:** configurar Argo CD para observar el overlay de Minikube. GitHub Actions verifica, escanea y publica imágenes con etiqueta inmutable; la versión deseada se cambia en Git y Argo CD sincroniza el clúster. No ejecutar `kubectl apply` desde Actions en entornos administrados por Argo CD. Un eventual overlay de Azure se abordaría solo si se retoma HT-17.
 
 **Aceptación:** un cambio aprobado en Git actualiza Minikube; revertir el cambio restaura la versión anterior y el estado de sincronización es visible. Una imagen que no pasó CI ni Trivy no se despliega.
 
-## Etapa 9: preparación y despliegue en Azure
+## Ampliación futura opcional: Azure
+
+HT-17 y HT-18 documentan una posible evolución del portafolio, no trabajo pendiente para terminar la demo local. Solo se iniciarían si se decide mostrar también un despliegue cloud y se define un presupuesto. No forman parte de la aceptación de HT-16 ni del CI habitual; hasta entonces, Compose y Minikube son los entornos de referencia.
 
 ### HT-17 — Preparar adaptadores y configuración para Azure
+
+**Estado:** opcional; propuesta futura, fuera de la entrega local del portafolio.
 
 **Depende de:** HT-15 y HT-16.
 
@@ -298,6 +302,8 @@ Este backlog define el **MVP local** (HT-01 a HT-09 y HU-01 a HU-14) y una etapa
 
 ### HT-18 — Desplegar y demostrar la tienda en Azure
 
+**Estado:** opcional; ejecutar solo si se retoma HT-17 y se decide hacer una demo cloud temporal.
+
 **Depende de:** HT-17; requiere suscripción, presupuesto y dominio HTTPS.
 
 **Implementar:** provisionar la infraestructura aprobada con Terraform. Publicar imágenes identificadas por SHA en ACR desde GitHub Actions con identidad federada OIDC y actualizar el overlay de Azure para que Argo CD despliegue en AKS. Exponer por HTTPS web, API, Keycloak y webhook; mantener privados datos, mensajería, rutas internas y Actuator. Obtener secretos desde Key Vault. Usar Prometheus administrado y Grafana para métricas y el destino de trazas/logs validado en HT-17. Definir verificación posterior al despliegue, vuelta a la imagen anterior y migraciones Flyway compatibles con esa versión.
@@ -306,4 +312,4 @@ Este backlog define el **MVP local** (HT-01 a HT-09 y HU-01 a HU-14) y una etapa
 
 ## Fuera del alcance funcional
 
-Pagos reales, reembolsos automáticos, cancelación de pedidos, inventario físico, envíos, cupones, reseñas, favoritos y acceso con Google. Los pedidos `CREATED` abandonados permanecen; una compra repetida ya pagada queda para revisión manual sin reembolso automático. Kubernetes y Azure son ampliaciones de infraestructura posteriores al MVP local, descritas en HT-15 a HT-18.
+Pagos reales, reembolsos automáticos, cancelación de pedidos, inventario físico, envíos, cupones, reseñas, favoritos y acceso con Google. Los pedidos `CREATED` abandonados permanecen; una compra repetida ya pagada queda para revisión manual sin reembolso automático. Kubernetes local y GitOps amplían el MVP como parte del portafolio (HT-15 y HT-16); Azure queda como posibilidad futura opcional (HT-17 y HT-18).

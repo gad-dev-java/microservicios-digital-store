@@ -1,6 +1,6 @@
 # Estructura del repositorio
 
-Este árbol distingue la estructura ya creada de las carpetas previstas para las próximas historias. Los seis módulos Maven, la web, la infraestructura local y las migraciones V1 ya existen.
+Este árbol distingue la estructura ya creada de las carpetas previstas para las próximas historias. Los seis módulos Maven, la web y la infraestructura local ya existen. Compose y Minikube cubren el portafolio; el overlay y los módulos Terraform de Azure descritos en [HT-17 y HT-18](user-stories.md#ampliación-futura-opcional-azure) son opcionales y no forman parte del árbol actual.
 
 ```text
 D:/portafolio/
@@ -10,7 +10,7 @@ D:/portafolio/
 ├── compose.observability.yaml      # Perfil local con métricas, trazas, logs y Grafana
 ├── .env.example                    # Nombres de variables, sin credenciales
 ├── .gitignore
-├── README.md                       # CI y despliegue local; la guía de demo sigue pendiente
+├── README.md                       # Arranque, recorrido de demo y CI local
 ├── AGENTS.md
 ├── script.sql                      # Referencia SQL; las migraciones V1 son la fuente ejecutable
 ├── services/

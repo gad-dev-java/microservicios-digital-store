@@ -2,6 +2,10 @@
 
 Tienda local de productos digitales con React, Java 21, Spring Boot, Keycloak, PostgreSQL, Redis, Kafka y Mailpit. Catalog publica archivos; Order crea pedidos y confirma pagos de prueba de Mercado Pago; Notification envía el correo tras consumir `ORDER_PAID`. La entrada HTTP pública pasa por Gateway. La arquitectura y las historias están en [`docs/architecture.md`](docs/architecture.md) y [`docs/user-stories.md`](docs/user-stories.md); los contratos de la demo están en [`docs/contracts/`](docs/contracts/).
 
+## Alcance del portafolio
+
+La entrega del portafolio es la demo **local y reproducible**: Compose o Minikube, compra de prueba de extremo a extremo, CI, pruebas y observabilidad. Minikube y Argo CD permiten mostrar Kubernetes y GitOps sin una suscripción cloud. No se necesita Azure para arrancar, probar o evaluar el proyecto. [HT-17 y HT-18](docs/user-stories.md#ampliación-futura-opcional-azure) describen una posible ampliación futura en Azure; no bloquean la demo ni el CI y todavía no están implementadas.
+
 ## Requisitos y configuración inicial
 
 - Docker Desktop con Compose e integración WSL2, Java 21, Node.js 24 y npm. Usa el Maven Wrapper de la raíz; para el webhook instala `cloudflared` en el equipo que ejecuta Docker.
