@@ -15,6 +15,9 @@ permissions:
 jobs:
   verify:
     runs-on: [self-hosted, Linux, X64, portafolio-local]
+    permissions:
+      contents: read
+      packages: write
     env:
       COMPOSE_PROJECT_NAME: ci-${{ github.run_id }}
       POSTGRES_USER: ci
@@ -82,6 +85,9 @@ jobs:
       - name: Construir imágenes
         run: docker compose build
 
+      - name: Construir imagen web para Kubernetes
+        run: docker build -f web/Dockerfile.k8s -t "${COMPOSE_PROJECT_NAME}-web" web
+
       - name: Prueba ligera de catálogo con k6
         run: |
           set -euo pipefail
@@ -123,3 +129,23 @@ jobs:
           path: security-reports/
           if-no-files-found: warn
           retention-days: 14
+
+      - name: Publicar imágenes aprobadas en GHCR
+        if: github.event_name == 'push' && github.ref == 'refs/heads/master'
+        env:
+          GHCR_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+
+          registry="ghcr.io/${GITHUB_REPOSITORY,,}"
+          printf '%s' "$GHCR_TOKEN" |
+            docker login ghcr.io --username "$GITHUB_ACTOR" --password-stdin
+
+          for service in catalog-service order-service notification-service gateway-service web; do
+            local_image="${COMPOSE_PROJECT_NAME}-${service}"
+            published_image="${registry}/${service}:sha-${GITHUB_SHA}"
+
+            docker tag "$local_image" "$published_image"
+            docker push "$published_image"
+            echo "Publicado: $published_image"
+          done
