@@ -6,12 +6,17 @@ resources:
 
 images:
   - name: digital-store/catalog-service
-    newTag: ht15
+    newName: ghcr.io/gad-dev-java/microservicios-digital-store/catalog-service
+    digest: sha256:ff283b4403101958e0f59faf54f326899b2e0aa36cf3b9105198d4fe6024fbd6
   - name: digital-store/order-service
-    newTag: ht15
+    newName: ghcr.io/gad-dev-java/microservicios-digital-store/order-service
+    digest: sha256:650ad8d38d30454e7a3d0913a8e6b064d429f024d800e0db90bb1e19af96ff46
   - name: digital-store/notification-service
-    newTag: ht15
+    newName: ghcr.io/gad-dev-java/microservicios-digital-store/notification-service
+    digest: sha256:d078365a32402350b26a692cc0115287fae5ae647207ee3cd2972dd5e37145cc
   - name: digital-store/gateway-service
-    newTag: ht15
+    newName: ghcr.io/gad-dev-java/microservicios-digital-store/gateway-service
+    digest: sha256:24e7117411d66d9cce95c39933f76916d820d7ac95206cb4ece38598ddae2157
   - name: digital-store/web
-    newTag: ht15
+    newName: ghcr.io/gad-dev-java/microservicios-digital-store/web
+    digest: sha256:92cafa1154550c07d9c713e74fd2f30e6dcb607ecd2029cba5fe804b577f18f6
