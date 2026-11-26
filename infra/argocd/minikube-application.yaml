@@ -1,0 +1,21 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: digital-store-minikube
+  namespace: argocd
+spec:
+  project: default
+  source:
+    repoURL: https://github.com/gad-dev-java/microservicios-digital-store.git
+    targetRevision: master
+    path: infra/k8s/overlays/minikube
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: digital-store
+  syncPolicy:
+    automated:
+      enabled: true
+      selfHeal: true
+      prune: false
+    syncOptions:
+      - CreateNamespace=true

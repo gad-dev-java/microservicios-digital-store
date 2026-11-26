@@ -13,6 +13,7 @@ services=(
   order-service
   notification-service
   gateway-service
+  web
 )
 
 failed=0
